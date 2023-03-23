@@ -122,6 +122,14 @@ func run(userConfigPath string) error {
 		&survey.Input{Message: "Duration of temporary credentials:", Default: "60m"},
 		&sessionDuration,
 		survey.WithValidator(survey.Required),
+		survey.WithValidator(func(t interface{}) error {
+			tStr, isStr := t.(string)
+			if !isStr {
+				return fmt.Errorf("%s is not a string", t)
+			}
+			_, err = time.ParseDuration(tStr)
+			return err
+		}),
 	)
 	if err != nil {
 		return err
