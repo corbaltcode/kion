@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -145,6 +146,11 @@ func run(userConfigPath string) error {
 		"username":         username,
 	}
 
+	userConfigDir := filepath.Dir(userConfigPath)
+	err = os.MkdirAll(userConfigDir, 0700)
+	if err != nil {
+		return err
+	}
 	f, err := os.OpenFile(userConfigPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
