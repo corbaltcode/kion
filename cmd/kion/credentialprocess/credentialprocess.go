@@ -16,13 +16,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func New(cfg *config.Config, userConfigDir string) *cobra.Command {
+func New(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "credential-process",
 		Short: "Credential process for AWS CLI",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(cfg, userConfigDir)
+			return run(cfg)
 		},
 	}
 
@@ -33,7 +33,11 @@ func New(cfg *config.Config, userConfigDir string) *cobra.Command {
 	return cmd
 }
 
-func run(cfg *config.Config, userConfigDir string) error {
+func run(cfg *config.Config) error {
+	userConfigDir, err := config.UserConfigDir()
+	if err != nil {
+		return err
+	}
 	host, err := cfg.StringErr("host")
 	if err != nil {
 		return err

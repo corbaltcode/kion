@@ -23,14 +23,13 @@ import (
 )
 
 func main() {
-	homeDir, err := os.UserHomeDir()
+	userConfigName, err := config.UserConfigName()
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	userConfigDir := filepath.Join(homeDir, ".config", "kion")
-	userConfigPath := filepath.Join(userConfigDir, "config.yml")
 	configPaths := []string{
-		userConfigPath,
+		userConfigName,
 		filepath.Join(".", "kion.yml"),
 	}
 
@@ -59,12 +58,12 @@ func main() {
 
 	cfg := &config.Config{Koanf: k}
 
-	rootCmd.AddCommand(credentialprocess.New(cfg, userConfigDir))
+	rootCmd.AddCommand(credentialprocess.New(cfg))
 	rootCmd.AddCommand(credentials.New(cfg))
 	rootCmd.AddCommand(console.New(cfg))
 	rootCmd.AddCommand(login.New(cfg))
 	rootCmd.AddCommand(logout.New(cfg))
-	rootCmd.AddCommand(setup.New(userConfigPath))
+	rootCmd.AddCommand(setup.New())
 
 	err = rootCmd.Execute()
 	if err != nil {

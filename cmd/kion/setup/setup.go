@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/util"
 	"github.com/corbaltcode/kion/internal/client"
 	"github.com/spf13/cobra"
@@ -16,28 +17,32 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func New(userConfigPath string) *cobra.Command {
+func New() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Interactive setup",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(userConfigPath)
+			return run()
 		},
 	}
 
 	return cmd
 }
 
-func run(userConfigPath string) error {
-	userConfigExists, err := fileExists(userConfigPath)
+func run() error {
+	userConfigName, err := config.UserConfigName()
+	if err != nil {
+		return err
+	}
+	userConfigExists, err := fileExists(userConfigName)
 	if err != nil {
 		return err
 	}
 	if userConfigExists {
 		var overwrite bool
 		err = survey.AskOne(
-			&survey.Confirm{Message: fmt.Sprintf("Config file '%v' exists; overwrite?", userConfigPath)},
+			&survey.Confirm{Message: fmt.Sprintf("Config file '%v' exists; overwrite?", userConfigName)},
 			&overwrite,
 		)
 		if err != nil {
@@ -154,12 +159,12 @@ func run(userConfigPath string) error {
 		"username":         username,
 	}
 
-	userConfigDir := filepath.Dir(userConfigPath)
+	userConfigDir := filepath.Dir(userConfigName)
 	err = os.MkdirAll(userConfigDir, 0700)
 	if err != nil {
 		return err
 	}
-	f, err := os.OpenFile(userConfigPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	f, err := os.OpenFile(userConfigName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
