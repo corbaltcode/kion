@@ -1,12 +1,15 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/knadh/koanf/v2"
+	"gopkg.in/yaml.v3"
 )
 
 func UserConfigDir() (string, error) {
@@ -83,4 +86,25 @@ func LoadKeyConfig() (*KeyConfig, error) {
 	}
 
 	return &config, err
+}
+
+func (c *KeyConfig) Save() error {
+	dir, err := UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	name := filepath.Join(dir, keyConfigFilename)
+	err = os.MkdirAll(dir, 0700)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return yaml.NewEncoder(f).Encode(c)
 }

@@ -8,6 +8,8 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
+const AppAPIKeyName = "Kion Tool"
+
 func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, error) {
 	host, err := cfg.StringErr("host")
 	if err != nil {

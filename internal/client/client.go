@@ -17,6 +17,11 @@ type Client struct {
 	accessToken string
 }
 
+type AppAPIKey struct {
+	ID  int
+	Key string
+}
+
 type IDMS struct {
 	ID   int
 	Name string
@@ -69,6 +74,20 @@ func GetIDMSs(host string) ([]IDMS, error) {
 	}
 
 	return resp, nil
+}
+
+func (c *Client) CreateAppAPIKey(name string) (*AppAPIKey, error) {
+	req := map[string]interface{}{
+		"name": name,
+	}
+	resp := AppAPIKey{}
+
+	err := c.do(http.MethodPost, "v3/app-api-key", req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }
 
 func (c *Client) GetTemporaryCredentialsByIAMRole(accountID string, iamRole string) (*TemporaryCredentials, error) {
