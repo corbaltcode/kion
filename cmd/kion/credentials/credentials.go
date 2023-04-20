@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/util"
 	"github.com/spf13/cobra"
 )
 
-func New(cfg *util.Config) *cobra.Command {
+func New(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "credentials",
 		Aliases: []string{"creds"},
@@ -27,7 +28,7 @@ func New(cfg *util.Config) *cobra.Command {
 	return cmd
 }
 
-func run(cfg *util.Config) error {
+func run(cfg *config.Config) error {
 	accountID, err := cfg.StringErr("account-id")
 	if err != nil {
 		return err

@@ -1,12 +1,13 @@
 package logout
 
 import (
+	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/util"
 	"github.com/spf13/cobra"
 	"github.com/zalando/go-keyring"
 )
 
-func New(cfg *util.Config) *cobra.Command {
+func New(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "logout",
 		Short: "Removes credentials from system keyring",
@@ -19,7 +20,7 @@ func New(cfg *util.Config) *cobra.Command {
 	return cmd
 }
 
-func run(cfg *util.Config) error {
+func run(cfg *config.Config) error {
 	host, err := cfg.StringErr("host")
 	if err != nil {
 		return err

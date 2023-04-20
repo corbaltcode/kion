@@ -7,13 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/console"
 	"github.com/corbaltcode/kion/cmd/kion/credentialprocess"
 	"github.com/corbaltcode/kion/cmd/kion/credentials"
 	"github.com/corbaltcode/kion/cmd/kion/login"
 	"github.com/corbaltcode/kion/cmd/kion/logout"
 	"github.com/corbaltcode/kion/cmd/kion/setup"
-	"github.com/corbaltcode/kion/cmd/kion/util"
 
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
@@ -57,7 +57,7 @@ func main() {
 		},
 	}
 
-	cfg := &util.Config{Koanf: k}
+	cfg := &config.Config{Koanf: k}
 
 	rootCmd.AddCommand(credentialprocess.New(cfg, userConfigDir))
 	rootCmd.AddCommand(credentials.New(cfg))
