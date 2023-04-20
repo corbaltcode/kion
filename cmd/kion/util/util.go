@@ -8,17 +8,20 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-func NewClient(cfg *config.Config) (*client.Client, error) {
+func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, error) {
 	host, err := cfg.StringErr("host")
 	if err != nil {
 		return nil, err
+	}
+
+	if keyCfg.Key != "" {
+		return client.NewWithAppAPIKey(host, keyCfg.Key), nil
 	}
 
 	idms, err := cfg.IntErr("idms")
 	if err != nil {
 		return nil, err
 	}
-
 	username, err := cfg.StringErr("username")
 	if err != nil {
 		return nil, err

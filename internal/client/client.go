@@ -28,6 +28,13 @@ type TemporaryCredentials struct {
 	SessionToken    string `json:"session_token"`
 }
 
+func NewWithAppAPIKey(host string, key string) *Client {
+	return &Client{
+		Host:        host,
+		accessToken: key,
+	}
+}
+
 // TODO: how to use the refresh token (currently dropped)?
 func Login(host string, idms int, username string, password string) (*Client, error) {
 	req := map[string]interface{}{

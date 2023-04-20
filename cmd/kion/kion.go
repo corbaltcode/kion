@@ -58,9 +58,15 @@ func main() {
 
 	cfg := &config.Config{Koanf: k}
 
-	rootCmd.AddCommand(credentialprocess.New(cfg))
-	rootCmd.AddCommand(credentials.New(cfg))
-	rootCmd.AddCommand(console.New(cfg))
+	keyCfg, err := config.LoadKeyConfig()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	rootCmd.AddCommand(credentialprocess.New(cfg, keyCfg))
+	rootCmd.AddCommand(credentials.New(cfg, keyCfg))
+	rootCmd.AddCommand(console.New(cfg, keyCfg))
 	rootCmd.AddCommand(login.New(cfg))
 	rootCmd.AddCommand(logout.New(cfg))
 	rootCmd.AddCommand(setup.New())

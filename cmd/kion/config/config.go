@@ -52,3 +52,35 @@ func (c *Config) StringErr(path string) (string, error) {
 	}
 	return v, nil
 }
+
+const keyConfigFilename = "key.yml"
+
+type KeyConfig struct {
+	Key     string
+	Created time.Time
+}
+
+func LoadKeyConfig() (*KeyConfig, error) {
+	dir, err := UserConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	config := KeyConfig{}
+
+	name := filepath.Join(dir, keyConfigFilename)
+	f, err := os.Open(name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return &config, nil
+	} else if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	err = yaml.NewDecoder(f).Decode(&config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, err
+}
