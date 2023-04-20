@@ -90,6 +90,20 @@ func (c *Client) CreateAppAPIKey(name string) (*AppAPIKey, error) {
 	return &resp, nil
 }
 
+func (c *Client) RotateAppAPIKey(key string) (*AppAPIKey, error) {
+	req := map[string]interface{}{
+		"key": key,
+	}
+	resp := AppAPIKey{}
+
+	err := c.do(http.MethodPost, "v3/app-api-key/rotate", req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
 func (c *Client) GetTemporaryCredentialsByIAMRole(accountID string, iamRole string) (*TemporaryCredentials, error) {
 	req := map[string]interface{}{
 		"account_number": accountID,
