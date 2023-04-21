@@ -5,7 +5,7 @@ _kion_ is a command-line interface to Kion (cloudtamer). It enables the AWS CLI 
 ## Installation
 
 ```
-GOPRIVATE=github.com go install github.com/corbaltcode/kion/cmd/kion@latest
+go install github.com/corbaltcode/kion/cmd/kion@latest
 ```
 
 ## Setup
@@ -13,11 +13,11 @@ GOPRIVATE=github.com go install github.com/corbaltcode/kion/cmd/kion@latest
 Run `kion setup` to set up kion interactively. This command writes _~/.config/kion/config.yml_, e.g.:
 
 ```yaml
-host: cloudtamer.cms.gov
-idms: 2
+host: kion.example.com
+idms: 1
 region: us-east-1
 session-duration: 1h0m0s
-username: BBSD 
+username: alice
 ```
 
 ## Usage
