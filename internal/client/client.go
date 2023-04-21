@@ -17,6 +17,11 @@ type Client struct {
 	accessToken string
 }
 
+type AppAPIKey struct {
+	ID  int
+	Key string
+}
+
 type IDMS struct {
 	ID   int
 	Name string
@@ -26,6 +31,13 @@ type TemporaryCredentials struct {
 	AccessKeyID     string `json:"access_key"`
 	SecretAccessKey string `json:"secret_access_key"`
 	SessionToken    string `json:"session_token"`
+}
+
+func NewWithAppAPIKey(host string, key string) *Client {
+	return &Client{
+		Host:        host,
+		accessToken: key,
+	}
 }
 
 // TODO: how to use the refresh token (currently dropped)?
@@ -62,6 +74,34 @@ func GetIDMSs(host string) ([]IDMS, error) {
 	}
 
 	return resp, nil
+}
+
+func (c *Client) CreateAppAPIKey(name string) (*AppAPIKey, error) {
+	req := map[string]interface{}{
+		"name": name,
+	}
+	resp := AppAPIKey{}
+
+	err := c.do(http.MethodPost, "v3/app-api-key", req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+func (c *Client) RotateAppAPIKey(key string) (*AppAPIKey, error) {
+	req := map[string]interface{}{
+		"key": key,
+	}
+	resp := AppAPIKey{}
+
+	err := c.do(http.MethodPost, "v3/app-api-key/rotate", req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }
 
 func (c *Client) GetTemporaryCredentialsByIAMRole(accountID string, iamRole string) (*TemporaryCredentials, error) {

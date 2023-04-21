@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func New(cfg *config.Config) *cobra.Command {
+func New(cfg *config.Config, keyCfg *config.KeyConfig) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "credentials",
 		Aliases: []string{"creds"},
 		Short:   "Prints temporary credentials",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(cfg)
+			return run(cfg, keyCfg)
 		},
 	}
 
@@ -28,7 +28,7 @@ func New(cfg *config.Config) *cobra.Command {
 	return cmd
 }
 
-func run(cfg *config.Config) error {
+func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	accountID, err := cfg.StringErr("account-id")
 	if err != nil {
 		return err
@@ -45,7 +45,7 @@ func run(cfg *config.Config) error {
 		return fmt.Errorf("invalid format: %v", format)
 	}
 
-	kion, err := util.NewClient(cfg)
+	kion, err := util.NewClient(cfg, keyCfg)
 	if err != nil {
 		return err
 	}

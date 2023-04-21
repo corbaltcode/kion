@@ -1,12 +1,15 @@
 package config
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/knadh/koanf/v2"
+	"gopkg.in/yaml.v3"
 )
 
 func UserConfigDir() (string, error) {
@@ -51,4 +54,57 @@ func (c *Config) StringErr(path string) (string, error) {
 		return "", fmt.Errorf("missing config value: %v", path)
 	}
 	return v, nil
+}
+
+const keyConfigFilename = "key.yml"
+
+type KeyConfig struct {
+	Key     string
+	Created time.Time
+}
+
+func LoadKeyConfig() (*KeyConfig, error) {
+	dir, err := UserConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	config := KeyConfig{}
+
+	name := filepath.Join(dir, keyConfigFilename)
+	f, err := os.Open(name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return &config, nil
+	} else if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	err = yaml.NewDecoder(f).Decode(&config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, err
+}
+
+func (c *KeyConfig) Save() error {
+	dir, err := UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	name := filepath.Join(dir, keyConfigFilename)
+	err = os.MkdirAll(dir, 0700)
+	if err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return yaml.NewEncoder(f).Encode(c)
 }

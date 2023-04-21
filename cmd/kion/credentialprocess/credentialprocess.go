@@ -16,13 +16,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func New(cfg *config.Config) *cobra.Command {
+func New(cfg *config.Config, keyCfg *config.KeyConfig) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "credential-process",
 		Short: "Credential process for AWS CLI",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(cfg)
+			return run(cfg, keyCfg)
 		},
 	}
 
@@ -33,7 +33,7 @@ func New(cfg *config.Config) *cobra.Command {
 	return cmd
 }
 
-func run(cfg *config.Config) error {
+func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	userConfigDir, err := config.UserConfigDir()
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ func run(cfg *config.Config) error {
 
 	// no cached credentials or cached credentials expired; get new ones
 	if credsWithExpiry == nil {
-		kion, err := util.NewClient(cfg)
+		kion, err := util.NewClient(cfg, keyCfg)
 		if err != nil {
 			return err
 		}

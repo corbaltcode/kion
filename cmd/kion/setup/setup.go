@@ -88,6 +88,7 @@ func run() error {
 
 	var username string
 	var password string
+	var kion *client.Client
 
 	for {
 		err = survey.AskOne(
@@ -108,7 +109,7 @@ func run() error {
 			return err
 		}
 
-		_, err = client.Login(host, idms.ID, username, password)
+		kion, err = client.Login(host, idms.ID, username, password)
 		if errors.Is(err, client.ErrInvalidCredentials) {
 			fmt.Println("Invalid credentials")
 		} else if err != nil {
@@ -118,9 +119,30 @@ func run() error {
 		}
 	}
 
-	err = keyring.Set(util.KeyringService(host, idms.ID), username, password)
+	var appAPIKeyAnswer survey.OptionAnswer
+	err = survey.AskOne(
+		&survey.Select{
+			Message: "Create App API Key?",
+			Options: []string{"Yes (recommended)", "No (user credentials will be saved in system keyring)"},
+		},
+		&appAPIKeyAnswer,
+	)
 	if err != nil {
 		return err
+	}
+
+	appAPIKey := &client.AppAPIKey{}
+
+	if appAPIKeyAnswer.Index == 0 {
+		appAPIKey, err = kion.CreateAppAPIKey(util.AppAPIKeyName)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = keyring.Set(util.KeyringService(host, idms.ID), username, password)
+		if err != nil {
+			return err
+		}
 	}
 
 	var sessionDuration time.Duration
@@ -170,7 +192,15 @@ func run() error {
 	}
 	defer f.Close()
 
-	return yaml.NewEncoder(f).Encode(settings)
+	err = yaml.NewEncoder(f).Encode(settings)
+	if err != nil {
+		return err
+	}
+
+	keyCfg := config.KeyConfig{
+		Key: appAPIKey.Key,
+	}
+	return keyCfg.Save()
 }
 
 func fileExists(name string) (bool, error) {
