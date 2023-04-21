@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/relvacode/iso8601"
 )
 
 var ErrInvalidCredentials = errors.New("kion: invalid credentials")
@@ -20,6 +23,11 @@ type Client struct {
 type AppAPIKey struct {
 	ID  int
 	Key string
+}
+
+type AppAPIKeyMetadata struct {
+	ID      int
+	Created time.Time
 }
 
 type IDMS struct {
@@ -102,6 +110,28 @@ func (c *Client) RotateAppAPIKey(key string) (*AppAPIKey, error) {
 	}
 
 	return &resp, nil
+}
+
+func (c *Client) GetAppAPIKeyMetadata(id int) (*AppAPIKeyMetadata, error) {
+	resp := struct {
+		ID             int
+		CreatedISO8601 string `json:"created_at"`
+	}{}
+
+	err := c.do(http.MethodGet, fmt.Sprintf("v3/app-api-key/%d", id), nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	created, err := iso8601.ParseString(resp.CreatedISO8601)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AppAPIKeyMetadata{
+		ID:      resp.ID,
+		Created: created,
+	}, nil
 }
 
 func (c *Client) GetTemporaryCredentialsByIAMRole(accountID string, iamRole string) (*TemporaryCredentials, error) {

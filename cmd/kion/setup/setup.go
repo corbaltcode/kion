@@ -132,9 +132,14 @@ func run() error {
 	}
 
 	appAPIKey := &client.AppAPIKey{}
+	appAPIKeyMetadata := &client.AppAPIKeyMetadata{}
 
 	if appAPIKeyAnswer.Index == 0 {
 		appAPIKey, err = kion.CreateAppAPIKey(util.AppAPIKeyName)
+		if err != nil {
+			return err
+		}
+		appAPIKeyMetadata, err = kion.GetAppAPIKeyMetadata(appAPIKey.ID)
 		if err != nil {
 			return err
 		}
@@ -145,19 +150,35 @@ func run() error {
 		}
 	}
 
+	var rotateAppAPIKeys bool
+	err = survey.AskOne(
+		&survey.Confirm{
+			Message: "Automatically rotate App API Keys?",
+			Default: true,
+		},
+		&rotateAppAPIKeys,
+	)
+	if err != nil {
+		return err
+	}
+
+	var appAPIKeyDuration time.Duration
+	err = survey.AskOne(
+		&survey.Input{Message: "Duration of App API Keys:", Default: "168h"},
+		&appAPIKeyDuration,
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validateDuration),
+	)
+	if err != nil {
+		return err
+	}
+
 	var sessionDuration time.Duration
 	err = survey.AskOne(
 		&survey.Input{Message: "Duration of temporary credentials:", Default: "60m"},
 		&sessionDuration,
 		survey.WithValidator(survey.Required),
-		survey.WithValidator(func(t interface{}) error {
-			tStr, isStr := t.(string)
-			if !isStr {
-				return fmt.Errorf("%s is not a string", t)
-			}
-			_, err = time.ParseDuration(tStr)
-			return err
-		}),
+		survey.WithValidator(validateDuration),
 	)
 	if err != nil {
 		return err
@@ -174,11 +195,13 @@ func run() error {
 	}
 
 	settings := map[string]interface{}{
-		"host":             host,
-		"idms":             idms.ID,
-		"region":           region,
-		"session-duration": sessionDuration,
-		"username":         username,
+		"app-api-key-duration": appAPIKeyDuration,
+		"host":                 host,
+		"idms":                 idms.ID,
+		"region":               region,
+		"rotate-app-api-keys":  rotateAppAPIKeys,
+		"session-duration":     sessionDuration,
+		"username":             username,
 	}
 
 	userConfigDir := filepath.Dir(userConfigName)
@@ -198,7 +221,8 @@ func run() error {
 	}
 
 	keyCfg := config.KeyConfig{
-		Key: appAPIKey.Key,
+		Key:     appAPIKey.Key,
+		Created: appAPIKeyMetadata.Created,
 	}
 	return keyCfg.Save()
 }
@@ -209,4 +233,13 @@ func fileExists(name string) (bool, error) {
 		return false, err
 	}
 	return err == nil, nil
+}
+
+func validateDuration(t interface{}) error {
+	tStr, isStr := t.(string)
+	if !isStr {
+		return fmt.Errorf("%s is not a string", t)
+	}
+	_, err := time.ParseDuration(tStr)
+	return err
 }
