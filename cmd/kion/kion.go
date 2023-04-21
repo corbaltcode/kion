@@ -7,13 +7,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/console"
 	"github.com/corbaltcode/kion/cmd/kion/credentialprocess"
 	"github.com/corbaltcode/kion/cmd/kion/credentials"
 	"github.com/corbaltcode/kion/cmd/kion/login"
 	"github.com/corbaltcode/kion/cmd/kion/logout"
 	"github.com/corbaltcode/kion/cmd/kion/setup"
-	"github.com/corbaltcode/kion/cmd/kion/util"
 
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
@@ -23,14 +23,13 @@ import (
 )
 
 func main() {
-	homeDir, err := os.UserHomeDir()
+	userConfigName, err := config.UserConfigName()
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
-	userConfigDir := filepath.Join(homeDir, ".config", "kion")
-	userConfigPath := filepath.Join(userConfigDir, "config.yml")
 	configPaths := []string{
-		userConfigPath,
+		userConfigName,
 		filepath.Join(".", "kion.yml"),
 	}
 
@@ -57,14 +56,14 @@ func main() {
 		},
 	}
 
-	cfg := &util.Config{Koanf: k}
+	cfg := &config.Config{Koanf: k}
 
-	rootCmd.AddCommand(credentialprocess.New(cfg, userConfigDir))
+	rootCmd.AddCommand(credentialprocess.New(cfg))
 	rootCmd.AddCommand(credentials.New(cfg))
 	rootCmd.AddCommand(console.New(cfg))
 	rootCmd.AddCommand(login.New(cfg))
 	rootCmd.AddCommand(logout.New(cfg))
-	rootCmd.AddCommand(setup.New(userConfigPath))
+	rootCmd.AddCommand(setup.New())
 
 	err = rootCmd.Execute()
 	if err != nil {

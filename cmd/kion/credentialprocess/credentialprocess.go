@@ -9,19 +9,20 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/util"
 	"github.com/corbaltcode/kion/internal/client"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-func New(cfg *util.Config, userConfigDir string) *cobra.Command {
+func New(cfg *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "credential-process",
 		Short: "Credential process for AWS CLI",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(cfg, userConfigDir)
+			return run(cfg)
 		},
 	}
 
@@ -32,7 +33,11 @@ func New(cfg *util.Config, userConfigDir string) *cobra.Command {
 	return cmd
 }
 
-func run(cfg *util.Config, userConfigDir string) error {
+func run(cfg *config.Config) error {
+	userConfigDir, err := config.UserConfigDir()
+	if err != nil {
+		return err
+	}
 	host, err := cfg.StringErr("host")
 	if err != nil {
 		return err
