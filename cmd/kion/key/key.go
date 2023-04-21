@@ -85,8 +85,13 @@ func runCreate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
+	keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
+	if err != nil {
+		return err
+	}
 
 	keyCfg.Key = key.Key
+	keyCfg.Created = keyMetadata.Created
 	return keyCfg.Save()
 }
 
@@ -103,7 +108,13 @@ func runRotate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	} else if err != nil {
 		return err
 	}
+	kion = client.NewWithAppAPIKey(host, key.Key)
+	keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
+	if err != nil {
+		return err
+	}
 
 	keyCfg.Key = key.Key
+	keyCfg.Created = keyMetadata.Created
 	return keyCfg.Save()
 }
