@@ -31,6 +31,13 @@ type AppAPIKeyMetadata struct {
 	Created time.Time
 }
 
+type CloudAccessRole struct {
+	ID            int
+	AccountID     int    `json:"account_id"`
+	AccountNumber string `json:"account_number"`
+	Name          string
+}
+
 type IDMS struct {
 	ID   int
 	Name string
@@ -154,6 +161,17 @@ func (c *Client) GetAppAPIKeyMetadata(id int) (*AppAPIKeyMetadata, error) {
 		ID:      resp.ID,
 		Created: created,
 	}, nil
+}
+
+func (c *Client) GetCloudAccessRoles() ([]CloudAccessRole, error) {
+	resp := []CloudAccessRole{}
+
+	err := c.do(http.MethodGet, "v3/me/cloud-access-role", nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (c *Client) GetTemporaryCredentialsByIAMRole(accountID string, iamRole string) (*TemporaryCredentials, error) {

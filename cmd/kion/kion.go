@@ -11,9 +11,11 @@ import (
 	"github.com/corbaltcode/kion/cmd/kion/console"
 	"github.com/corbaltcode/kion/cmd/kion/credentialprocess"
 	"github.com/corbaltcode/kion/cmd/kion/credentials"
+	"github.com/corbaltcode/kion/cmd/kion/each"
 	"github.com/corbaltcode/kion/cmd/kion/key"
 	"github.com/corbaltcode/kion/cmd/kion/login"
 	"github.com/corbaltcode/kion/cmd/kion/logout"
+	"github.com/corbaltcode/kion/cmd/kion/roles"
 	"github.com/corbaltcode/kion/cmd/kion/setup"
 	"github.com/corbaltcode/kion/internal/client"
 
@@ -70,9 +72,11 @@ func main() {
 	rootCmd.AddCommand(credentialprocess.New(cfg, keyCfg))
 	rootCmd.AddCommand(credentials.New(cfg, keyCfg))
 	rootCmd.AddCommand(console.New(cfg, keyCfg))
+	rootCmd.AddCommand(each.New(cfg, keyCfg))
 	rootCmd.AddCommand(key.New(cfg, keyCfg))
 	rootCmd.AddCommand(login.New(cfg))
 	rootCmd.AddCommand(logout.New(cfg))
+	rootCmd.AddCommand(roles.New(cfg, keyCfg))
 	rootCmd.AddCommand(setup.New())
 
 	err = rootCmd.Execute()
