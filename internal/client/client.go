@@ -20,6 +20,12 @@ type Client struct {
 	accessToken string
 }
 
+type Account struct {
+	ID        int
+	AccountID string `json:"account_number"`
+	Name      string `json:"account_name"`
+}
+
 type AppAPIKey struct {
 	ID  int
 	Key string
@@ -110,6 +116,17 @@ func (c *Client) RotateAppAPIKey(key string) (*AppAPIKey, error) {
 	}
 
 	return &resp, nil
+}
+
+func (c *Client) GetAccounts() ([]Account, error) {
+	resp := []Account{}
+
+	err := c.do(http.MethodGet, "v3/account", nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (c *Client) GetAppAPIKeyMetadata(id int) (*AppAPIKeyMetadata, error) {
