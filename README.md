@@ -2,9 +2,9 @@
 
 The Kion tool is a command-line app that facilitates getting credentials from [Kion](https://kion.io) (formerly cloudtamer). It has three primary subcommands:
 
-1. _credentials_ – Creates and prints temporary AWS credentials in various formats
-2. _credential-process_ – Acts as a [credential process](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sourcing-external.html), allowing the AWS CLI and tools such Terraform to transparently fetch credentials
-3. _console_ – Opens the AWS console logged in to a certain account as a certain role
+1. `credentials` – Creates and prints temporary AWS credentials in various formats
+2. `credential-process` – Acts as a [credential process](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sourcing-external.html), allowing the AWS CLI and tools such Terraform to transparently fetch credentials
+3. `console` – Opens the AWS console logged in to a certain account as a certain role
 
 For help on a subcommand, run `kion help [subcommand]`. For a full list of subcommands, run `kion help`.
 
