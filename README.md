@@ -89,7 +89,7 @@ cloud-access-role: my-role
 
 Then the `credentials` and `console` commands can be reduced to:
  
- ```
+```
 $ cd /path/to/workspace
 
 ### Fetches credentials for role my-role in account 123412341234
