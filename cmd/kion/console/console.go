@@ -1,12 +1,13 @@
 package console
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/util"
@@ -77,8 +78,12 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if cfg.Bool("print") {
 		fmt.Println(signinUrl)
 	} else if cfg.Bool("logout") {
-		html := fmt.Sprintf(logoutHtmlTemplate, signinUrl)
-		err = browser.OpenReader(strings.NewReader(html))
+		html := new(bytes.Buffer)
+		err = logoutHtmlTemplate.Execute(html, signinUrl)
+		if err != nil {
+			return err
+		}
+		err = browser.OpenReader(html)
 		if err != nil {
 			return err
 		}
@@ -129,15 +134,15 @@ func getAWSSigninToken(accessKeyID string, secretAccessKey string, sessionToken 
 	return out.SigninToken, nil
 }
 
-const logoutHtmlTemplate = `
+var logoutHtmlTemplate = template.Must(template.New("logout").Parse(`
 	<body>
 		<script>
 			var iframe = document.createElement("iframe");
 			iframe.style = "visibility: hidden;";
 			iframe.src = "https://signin.aws.amazon.com/oauth?Action=logout";
 			iframe.onload = (event) => {
-				window.location = "%s";
+				window.location = {{.}};
 			};
 			document.body.appendChild(iframe);
 		</script>
-	</body>`
+	</body>`))
