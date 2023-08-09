@@ -1,9 +1,11 @@
 package console
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"net/url"
 
@@ -26,6 +28,7 @@ func New(cfg *config.Config, keyCfg *config.KeyConfig) *cobra.Command {
 	cmd.Flags().StringP("account-id", "", "", "AWS account ID")
 	cmd.Flags().StringP("cloud-access-role", "", "", "cloud access role")
 	cmd.Flags().BoolP("print", "p", false, "print URL instead of opening a browser")
+	cmd.Flags().BoolP("logout", "", false, "log out of existing AWS console session")
 	cmd.Flags().StringP("region", "", "", "AWS region")
 	cmd.Flags().StringP("session-duration", "", "1h", "duration of temporary credentials")
 
@@ -74,6 +77,16 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 
 	if cfg.Bool("print") {
 		fmt.Println(signinUrl)
+	} else if cfg.Bool("logout") {
+		html := new(bytes.Buffer)
+		err = logoutHtmlTemplate.Execute(html, signinUrl)
+		if err != nil {
+			return err
+		}
+		err = browser.OpenReader(html)
+		if err != nil {
+			return err
+		}
 	} else {
 		err = browser.OpenURL(signinUrl)
 		if err != nil {
@@ -120,3 +133,16 @@ func getAWSSigninToken(accessKeyID string, secretAccessKey string, sessionToken 
 
 	return out.SigninToken, nil
 }
+
+var logoutHtmlTemplate = template.Must(template.New("logout").Parse(`
+	<body>
+		<script>
+			var iframe = document.createElement("iframe");
+			iframe.style = "visibility: hidden;";
+			iframe.src = "https://signin.aws.amazon.com/oauth?Action=logout";
+			iframe.onload = (event) => {
+				window.location = {{.}};
+			};
+			document.body.appendChild(iframe);
+		</script>
+	</body>`))
