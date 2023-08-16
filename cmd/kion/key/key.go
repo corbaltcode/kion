@@ -3,6 +3,7 @@ package key
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/corbaltcode/kion/cmd/kion/config"
@@ -61,6 +62,10 @@ func runCreate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
+	appAPIKeyDuration, err := cfg.DurationErr("app-api-key-duration")
+	if err != nil {
+		return err
+	}
 
 	password, err := keyring.Get(util.KeyringService(host, idms), username)
 	if errors.Is(err, keyring.ErrNotFound) {
@@ -92,6 +97,7 @@ func runCreate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 
 	keyCfg.Key = key.Key
 	keyCfg.Created = keyMetadata.Created
+	keyCfg.Expiry = keyMetadata.Created.Add(appAPIKeyDuration)
 	return keyCfg.Save()
 }
 
@@ -100,15 +106,19 @@ func runRotate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
-
-	kion := client.NewWithAppAPIKey(host, keyCfg.Key)
-	key, err := kion.RotateAppAPIKey(keyCfg.Key)
-	if errors.Is(err, client.ErrUnauthorized) {
-		return errors.New("existing key unauthorized; run \"kion key create --force\"")
-	} else if err != nil {
+	appAPIKeyDuration, err := cfg.DurationErr("app-api-key-duration")
+	if err != nil {
 		return err
 	}
-	kion = client.NewWithAppAPIKey(host, key.Key)
+
+	kion := client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Expiry)
+	key, err := kion.RotateAppAPIKey(keyCfg.Key)
+	if err != nil {
+		return err
+	}
+
+	// can't know exact expiry before calling, so pass zero Time
+	kion = client.NewWithAppAPIKey(host, key.Key, time.Time{})
 	keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
 	if err != nil {
 		return err
@@ -116,5 +126,6 @@ func runRotate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 
 	keyCfg.Key = key.Key
 	keyCfg.Created = keyMetadata.Created
+	keyCfg.Expiry = keyMetadata.Created.Add(appAPIKeyDuration)
 	return keyCfg.Save()
 }

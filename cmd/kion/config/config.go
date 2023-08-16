@@ -61,9 +61,10 @@ const keyConfigFilename = "key.yml"
 type KeyConfig struct {
 	Key     string
 	Created time.Time
+	Expiry  time.Time
 }
 
-func LoadKeyConfig() (*KeyConfig, error) {
+func LoadKeyConfig(duration time.Duration) (*KeyConfig, error) {
 	dir, err := UserConfigDir()
 	if err != nil {
 		return nil, err
@@ -83,6 +84,13 @@ func LoadKeyConfig() (*KeyConfig, error) {
 	err = yaml.NewDecoder(f).Decode(&config)
 	if err != nil {
 		return nil, err
+	}
+
+	// Infer expiry for old config files. This can be removed once users have
+	// migrated to a version with KeyConfig.Expiry and the key config file has
+	// been updated, for example, by a rotation.
+	if config.Expiry.IsZero() {
+		config.Expiry = config.Created.Add(duration)
 	}
 
 	return &config, err

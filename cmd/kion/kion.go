@@ -15,6 +15,7 @@ import (
 	"github.com/corbaltcode/kion/cmd/kion/login"
 	"github.com/corbaltcode/kion/cmd/kion/logout"
 	"github.com/corbaltcode/kion/cmd/kion/setup"
+	"github.com/corbaltcode/kion/internal/client"
 
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
@@ -59,7 +60,11 @@ func main() {
 
 	cfg := &config.Config{Koanf: k}
 
-	keyCfg, err := config.LoadKeyConfig()
+	// LoadKeyConfig needs the duration to infer the expiry for old config
+	// files. This can be removed once users have migrated to the new version.
+	// If it's removed before everyone migrates, the only issue would be that
+	// we'd report "expired" when keys are invalid for any reason.
+	keyCfg, err := config.LoadKeyConfig(cfg.Duration("app-api-key-duration"))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -75,7 +80,14 @@ func main() {
 
 	err = rootCmd.Execute()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		program := os.Args[0]
+		var message string
+		if errors.Is(err, client.ErrAppAPIKeyExpired) {
+			message = fmt.Sprintf("app API key expired; run \"%s key create --force\"", program)
+		} else {
+			message = err.Error()
+		}
+		fmt.Fprintln(os.Stderr, message)
 		os.Exit(1)
 	}
 }
