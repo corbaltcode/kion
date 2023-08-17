@@ -85,6 +85,8 @@ func main() {
 		var message string
 		if errors.Is(err, keyring.ErrNotFound) {
 			message = fmt.Sprintf("no credentials; run \"%s login\" to store user credentials in the system keyring or \"%s key create\" to create an app API key", program, program)
+		} else if errors.Is(err, client.ErrInvalidCredentials) {
+			message = fmt.Sprintf("login failed; run \"%s login\" to update credentials", program)
 		} else if errors.Is(err, client.ErrAppAPIKeyExpired) {
 			message = fmt.Sprintf("app API key expired; run \"%s key create --force\"", program)
 		} else {
