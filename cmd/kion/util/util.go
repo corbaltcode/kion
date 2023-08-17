@@ -61,7 +61,6 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 		return nil, err
 	}
 
-	// TODO: better error if no creds
 	password, err := keyring.Get(KeyringService(host, idms), username)
 	if err != nil {
 		return nil, err
