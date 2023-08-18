@@ -3,6 +3,7 @@ package key
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/corbaltcode/kion/cmd/kion/config"
@@ -100,15 +101,19 @@ func runRotate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
-
-	kion := client.NewWithAppAPIKey(host, keyCfg.Key)
-	key, err := kion.RotateAppAPIKey(keyCfg.Key)
-	if errors.Is(err, client.ErrUnauthorized) {
-		return errors.New("existing key unauthorized; run \"kion key create --force\"")
-	} else if err != nil {
+	appAPIKeyDuration, err := cfg.DurationErr("app-api-key-duration")
+	if err != nil {
 		return err
 	}
-	kion = client.NewWithAppAPIKey(host, key.Key)
+
+	kion := client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Created.Add(appAPIKeyDuration))
+	key, err := kion.RotateAppAPIKey(keyCfg.Key)
+	if err != nil {
+		return err
+	}
+
+	// can't know exact expiry before getting metadata, so pass zero Time meaning "no expiry"
+	kion = client.NewWithAppAPIKey(host, key.Key, time.Time{})
 	keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
 	if err != nil {
 		return err

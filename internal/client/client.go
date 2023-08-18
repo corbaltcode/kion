@@ -12,12 +12,13 @@ import (
 	"github.com/relvacode/iso8601"
 )
 
+var ErrAppAPIKeyExpired = errors.New("kion: app API key expired")
 var ErrInvalidCredentials = errors.New("kion: invalid credentials")
 var ErrUnauthorized = errors.New("kion: unauthorized")
 
 type Client struct {
 	Host        string
-	accessToken string
+	accessToken *accessToken
 }
 
 type AppAPIKey struct {
@@ -41,10 +42,27 @@ type TemporaryCredentials struct {
 	SessionToken    string `json:"session_token"`
 }
 
-func NewWithAppAPIKey(host string, key string) *Client {
+type accessToken struct {
+	Token       string
+	Expiry      time.Time
+	IsAppAPIKey bool
+}
+
+func (t *accessToken) IsExpired() bool {
+	return !t.Expiry.IsZero() && time.Now().After(t.Expiry)
+}
+
+// NewWithAppAPIKey creates a Client that authenticates with an App API Key.
+// expiry allows the Client to generate an error if it is used after the key has
+// expired. A zero expiry (time.Time{}) means the key doesn't expire.
+func NewWithAppAPIKey(host string, key string, expiry time.Time) *Client {
 	return &Client{
-		Host:        host,
-		accessToken: key,
+		Host: host,
+		accessToken: &accessToken{
+			Token:       key,
+			Expiry:      expiry,
+			IsAppAPIKey: true,
+		},
 	}
 }
 
@@ -61,14 +79,18 @@ func Login(host string, idms int, username string, password string) (*Client, er
 		}
 	}{}
 
-	err := do(http.MethodPost, host, "", "v3/token", req, &resp)
+	err := do(http.MethodPost, host, nil, "v3/token", req, &resp)
 	if err != nil {
 		return nil, err
 	}
 
 	client := Client{
-		Host:        host,
-		accessToken: resp.Access.Token,
+		Host: host,
+		accessToken: &accessToken{
+			Token:       resp.Access.Token,
+			Expiry:      time.Time{},
+			IsAppAPIKey: false,
+		},
 	}
 	return &client, nil
 }
@@ -76,7 +98,7 @@ func Login(host string, idms int, username string, password string) (*Client, er
 func GetIDMSs(host string) ([]IDMS, error) {
 	resp := []IDMS{}
 
-	err := do(http.MethodGet, host, "", "v2/idms", nil, &resp)
+	err := do(http.MethodGet, host, nil, "v2/idms", nil, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +200,11 @@ func (c *Client) do(method string, path string, data interface{}, out interface{
 	return do(method, c.Host, c.accessToken, path, data, out)
 }
 
-func do(method string, host string, accessToken string, path string, data interface{}, out interface{}) error {
+func do(method string, host string, accessToken *accessToken, path string, data interface{}, out interface{}) error {
+	if accessToken != nil && accessToken.IsAppAPIKey && accessToken.IsExpired() {
+		return ErrAppAPIKeyExpired
+	}
+
 	u := url.URL{
 		Scheme: "https",
 		Host:   host,
@@ -198,8 +224,8 @@ func do(method string, host string, accessToken string, path string, data interf
 	if err != nil {
 		return err
 	}
-	if accessToken != "" {
-		req.Header.Add("Authorization", "Bearer "+accessToken)
+	if accessToken != nil {
+		req.Header.Add("Authorization", "Bearer "+accessToken.Token)
 	}
 
 	resp, err := http.DefaultClient.Do(req)

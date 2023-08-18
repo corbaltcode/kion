@@ -18,20 +18,24 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 	}
 
 	if keyCfg.Key != "" {
+		appAPIKeyDuration, err := cfg.DurationErr("app-api-key-duration")
+		if err != nil {
+			return nil, err
+		}
+
 		if cfg.Bool("rotate-app-api-keys") {
-			duration, err := cfg.DurationErr("app-api-key-duration")
-			if err != nil {
-				return nil, err
-			}
+			expiry := keyCfg.Created.Add(appAPIKeyDuration)
 
 			// rotate if expiring within three days
-			if keyCfg.Created.Add(duration).Before(time.Now().Add(time.Hour * 72)) {
-				kion := client.NewWithAppAPIKey(host, keyCfg.Key)
+			if expiry.Before(time.Now().Add(time.Hour * 72)) {
+				kion := client.NewWithAppAPIKey(host, keyCfg.Key, expiry)
 				key, err := kion.RotateAppAPIKey(keyCfg.Key)
 				if err != nil {
 					return nil, err
 				}
-				kion = client.NewWithAppAPIKey(host, key.Key)
+
+				// can't know exact expiry before getting metadata, so pass zero Time meaning "no expiry"
+				kion = client.NewWithAppAPIKey(host, key.Key, time.Time{})
 				keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
 				if err != nil {
 					return nil, err
@@ -46,7 +50,7 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 			}
 		}
 
-		return client.NewWithAppAPIKey(host, keyCfg.Key), nil
+		return client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Created.Add(appAPIKeyDuration)), nil
 	}
 
 	idms, err := cfg.IntErr("idms")
@@ -58,7 +62,6 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 		return nil, err
 	}
 
-	// TODO: better error if no creds
 	password, err := keyring.Get(KeyringService(host, idms), username)
 	if err != nil {
 		return nil, err
