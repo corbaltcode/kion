@@ -49,7 +49,7 @@ type accessToken struct {
 }
 
 func (t *accessToken) IsExpired() bool {
-	return time.Now().After(t.Expiry)
+	return !t.Expiry.IsZero() && time.Now().After(t.Expiry)
 }
 
 func NewWithAppAPIKey(host string, key string, expiry time.Time) *Client {

@@ -34,7 +34,7 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 					return nil, err
 				}
 
-				// can't know exact expiry before calling, so pass zero Time
+				// can't know exact expiry before getting metadata, so pass zero Time meaning "no expiry"
 				kion = client.NewWithAppAPIKey(host, key.Key, time.Time{})
 				keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
 				if err != nil {
