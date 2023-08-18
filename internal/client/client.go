@@ -52,6 +52,9 @@ func (t *accessToken) IsExpired() bool {
 	return !t.Expiry.IsZero() && time.Now().After(t.Expiry)
 }
 
+// NewWithAppAPIKey creates a Client that authenticates with an App API Key.
+// expiry allows the Client to generate an error if it is used after the key has
+// expired. A zero expiry (time.Time{}) means the key doesn't expire.
 func NewWithAppAPIKey(host string, key string, expiry time.Time) *Client {
 	return &Client{
 		Host: host,
