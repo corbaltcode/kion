@@ -62,10 +62,6 @@ func runCreate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
-	appAPIKeyDuration, err := cfg.DurationErr("app-api-key-duration")
-	if err != nil {
-		return err
-	}
 
 	password, err := keyring.Get(util.KeyringService(host, idms), username)
 	if errors.Is(err, keyring.ErrNotFound) {
@@ -97,7 +93,6 @@ func runCreate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 
 	keyCfg.Key = key.Key
 	keyCfg.Created = keyMetadata.Created
-	keyCfg.Expiry = keyMetadata.Created.Add(appAPIKeyDuration)
 	return keyCfg.Save()
 }
 
@@ -111,7 +106,7 @@ func runRotate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 		return err
 	}
 
-	kion := client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Expiry)
+	kion := client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Created.Add(appAPIKeyDuration))
 	key, err := kion.RotateAppAPIKey(keyCfg.Key)
 	if err != nil {
 		return err
@@ -126,6 +121,5 @@ func runRotate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 
 	keyCfg.Key = key.Key
 	keyCfg.Created = keyMetadata.Created
-	keyCfg.Expiry = keyMetadata.Created.Add(appAPIKeyDuration)
 	return keyCfg.Save()
 }

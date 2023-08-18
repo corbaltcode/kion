@@ -18,15 +18,17 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 	}
 
 	if keyCfg.Key != "" {
+		appAPIKeyDuration, err := cfg.DurationErr("app-api-key-duration")
+		if err != nil {
+			return nil, err
+		}
+
 		if cfg.Bool("rotate-app-api-keys") {
-			duration, err := cfg.DurationErr("app-api-key-duration")
-			if err != nil {
-				return nil, err
-			}
+			expiry := keyCfg.Created.Add(appAPIKeyDuration)
 
 			// rotate if expiring within three days
-			if keyCfg.Expiry.Before(time.Now().Add(time.Hour * 72)) {
-				kion := client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Expiry)
+			if expiry.Before(time.Now().Add(time.Hour * 72)) {
+				kion := client.NewWithAppAPIKey(host, keyCfg.Key, expiry)
 				key, err := kion.RotateAppAPIKey(keyCfg.Key)
 				if err != nil {
 					return nil, err
@@ -41,7 +43,6 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 
 				keyCfg.Key = key.Key
 				keyCfg.Created = keyMetadata.Created
-				keyCfg.Expiry = keyMetadata.Created.Add(duration)
 				err = keyCfg.Save()
 				if err != nil {
 					return nil, err
@@ -49,7 +50,7 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 			}
 		}
 
-		return client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Expiry), nil
+		return client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Created.Add(appAPIKeyDuration)), nil
 	}
 
 	idms, err := cfg.IntErr("idms")

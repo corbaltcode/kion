@@ -61,11 +61,7 @@ func main() {
 
 	cfg := &config.Config{Koanf: k}
 
-	// LoadKeyConfig needs the duration to infer the expiry for old config
-	// files. This can be removed once users have migrated to the new version.
-	// If it's removed before everyone migrates, the only issue would be that
-	// we'd report "expired" when keys are invalid for any reason.
-	keyCfg, err := config.LoadKeyConfig(cfg.Duration("app-api-key-duration"))
+	keyCfg, err := config.LoadKeyConfig()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
