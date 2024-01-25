@@ -74,6 +74,38 @@ The `console` subcommand launches the AWS console as a certain role in a certain
 $ kion console --account-id 123412341234 --cloud-access-role my-role
 ```
 
+## Running Commands as Multiple Roles
+
+The `each` subcommand runs a command as each role in a list. The command is given as an argument, and a list of account-role pairs is provided on stdin:
+
+```
+### Counts S3 buckets in three accounts
+$ cat <<EOF | kion each 'aws s3 ls | wc -l'
+123412341234 cloud-access-role-1
+234123412341 cloud-access-role-3
+341234123412 cloud-access-role 3
+EOF
+```
+
+The `kion roles` command prints the user's accounts and roles:
+
+```
+$ kion roles
+123412341234 cloud-access-role-1
+234123412341 cloud-access-role-3
+341234123412 cloud-access-role 3
+```
+
+Because this is the format required by `each`, the two commands can be used together:
+
+```
+### Counts S3 buckets as each of my roles
+$ kion roles | kion each 'aws s3 ls | wc -l'
+
+### Counts S3 buckets as each of my "readonly" roles
+$ kion roles | grep readonly | kion each 'aws s3 ls | wc -l'
+```
+
 ## Config and kion.yml
 
 The Kion tool searches the following locations for arguments, in this order:
