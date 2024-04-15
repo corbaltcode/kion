@@ -21,6 +21,12 @@ type Client struct {
 	accessToken *accessToken
 }
 
+type AccountCloudAccessRole struct {
+	AccountID       string `json:"account_number"`
+	AccountName     string `json:"account_name"`
+	CloudAccessRole string `json:"name"`
+}
+
 type AppAPIKey struct {
 	ID  int
 	Key string
@@ -154,6 +160,18 @@ func (c *Client) GetAppAPIKeyMetadata(id int) (*AppAPIKeyMetadata, error) {
 		ID:      resp.ID,
 		Created: created,
 	}, nil
+}
+
+func (c *Client) GetAccountCloudAccessRoles() ([]AccountCloudAccessRole, error) {
+	resp := []AccountCloudAccessRole{}
+
+	// this method returns a join of cloud access role and account
+	err := c.do(http.MethodGet, "v3/me/cloud-access-role", nil, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (c *Client) GetTemporaryCredentialsByIAMRole(accountID string, iamRole string) (*TemporaryCredentials, error) {

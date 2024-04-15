@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/corbaltcode/kion/cmd/kion/access"
 	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/console"
 	"github.com/corbaltcode/kion/cmd/kion/credentialprocess"
@@ -67,6 +68,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	rootCmd.AddCommand(access.New(cfg, keyCfg))
 	rootCmd.AddCommand(credentialprocess.New(cfg, keyCfg))
 	rootCmd.AddCommand(credentials.New(cfg, keyCfg))
 	rootCmd.AddCommand(console.New(cfg, keyCfg))
