@@ -53,12 +53,26 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
+
+	accountInfo, err := kion.GetAccountByID(accountID)
+	if err != nil {
+		return err
+	}
+
+	// Account types: 1=commercial, 2=govcloud
+	awsEndpoint := ""
+	if accountInfo.AccountTypeID == 2 {
+		awsEndpoint = "amazonaws-us-gov.com"
+	} else {
+		awsEndpoint = "aws.amazon.com"
+	}
+
 	creds, err := kion.GetTemporaryCredentialsByCloudAccessRole(accountID, cloudAccessRole)
 	if err != nil {
 		return err
 	}
 
-	signinToken, err := getAWSSigninToken(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+	signinToken, err := getAWSSigninToken(awsEndpoint, creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
 	if err != nil {
 		return err
 	}
@@ -66,9 +80,9 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	v := url.Values{}
 	v.Add("Action", "login")
 	v.Add("Issuer", fmt.Sprintf("https://%s/login", host))
-	v.Add("Destination", "https://console.aws.amazon.com")
+	v.Add("Destination", fmt.Sprintf("https://console.%s", awsEndpoint))
 	v.Add("SigninToken", signinToken)
-	signinUrl := "https://signin.aws.amazon.com/federation?" + v.Encode()
+	signinUrl := fmt.Sprintf("https://signin.%s/federation?", awsEndpoint) + v.Encode()
 
 	if cfg.Bool("print") {
 		fmt.Println(signinUrl)
@@ -91,8 +105,7 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 
 	return nil
 }
-
-func getAWSSigninToken(accessKeyID string, secretAccessKey string, sessionToken string) (string, error) {
+func getAWSSigninToken(awsEndpoint string, accessKeyID string, secretAccessKey string, sessionToken string) (string, error) {
 	session := map[string]string{
 		"sessionId":    accessKeyID,
 		"sessionKey":   secretAccessKey,
@@ -106,7 +119,7 @@ func getAWSSigninToken(accessKeyID string, secretAccessKey string, sessionToken 
 	v := url.Values{}
 	v.Add("Action", "getSigninToken")
 	v.Add("Session", string(sessionJSON))
-	url := "https://signin.aws.amazon.com/federation?" + v.Encode()
+	url := fmt.Sprintf("https://signin.%s/federation?", awsEndpoint) + v.Encode()
 
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {

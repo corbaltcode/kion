@@ -48,6 +48,15 @@ type TemporaryCredentials struct {
 	SessionToken    string `json:"session_token"`
 }
 
+type AccountDetails struct {
+	AccountName   string `json:"account_name"`
+	AccountNumber string `json:"account_number"`
+	AccountTypeID int64  `json:"account_type_id"`
+	CreatedAt     string `json:"created_at"`
+	DeletedAt     string `json:"deleted_at"`
+	ID            int64  `json:"id"`
+}
+
 type accessToken struct {
 	Token       string
 	Expiry      time.Time
@@ -197,6 +206,17 @@ func (c *Client) GetTemporaryCredentialsByCloudAccessRole(accountID string, clou
 	resp := TemporaryCredentials{}
 
 	err := c.do(http.MethodPost, "v3/temporary-credentials/cloud-access-role", req, &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+func (c *Client) GetAccountByID(accountID string) (*AccountDetails, error) {
+	resp := AccountDetails{}
+
+	err := c.do(http.MethodGet, fmt.Sprintf("v3/account/by-account-number/%s", accountID), nil, &resp)
 	if err != nil {
 		return nil, err
 	}
