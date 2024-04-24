@@ -173,6 +173,26 @@ To remove credentials from the system keychain:
 $ kion logout
 ```
 
+## Printing Access Info
+
+The `access` subcommand prints the current user's Cloud Access Roles and associated accounts. Each line contains a Cloud Access Role, account ID, and account name:
+
+```
+$ kion access
+role1	123412341234	account1
+role1	234123412341	account2
+role2	123412341234	account1
+role2	234123412341	account2
+```
+
+The list can be filtered with the `--cloud-access-role` (`-r`), `--account-id`, and `--account` flags:
+
+```
+$ kion access --cloud-access-role role1
+role1	123412341234	account1
+role1	234123412341	account2
+```
+
 ## Scenario: Terraform
 
 Combining the features above, you can configure Terraform to fetch credentials from Kion transparently.
