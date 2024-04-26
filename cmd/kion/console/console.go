@@ -29,7 +29,6 @@ func New(cfg *config.Config, keyCfg *config.KeyConfig) *cobra.Command {
 	cmd.Flags().StringP("cloud-access-role", "", "", "cloud access role")
 	cmd.Flags().BoolP("print", "p", false, "print URL instead of opening a browser")
 	cmd.Flags().BoolP("logout", "", false, "log out of existing AWS console session")
-	cmd.Flags().StringP("region", "", "", "AWS region")
 	cmd.Flags().StringP("session-duration", "", "1h", "duration of temporary credentials")
 
 	return cmd
@@ -46,10 +45,6 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 		return err
 	}
 	host, err := cfg.StringErr("host")
-	if err != nil {
-		return err
-	}
-	region, err := cfg.StringErr("region")
 	if err != nil {
 		return err
 	}
@@ -71,7 +66,7 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	v := url.Values{}
 	v.Add("Action", "login")
 	v.Add("Issuer", fmt.Sprintf("https://%s/login", host))
-	v.Add("Destination", fmt.Sprintf("https://%s.console.aws.amazon.com", region))
+	v.Add("Destination", "https://console.aws.amazon.com")
 	v.Add("SigninToken", signinToken)
 	signinUrl := "https://signin.aws.amazon.com/federation?" + v.Encode()
 
