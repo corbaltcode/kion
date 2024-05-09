@@ -11,6 +11,7 @@ import (
 
 	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/util"
+	"github.com/corbaltcode/kion/internal/client"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -59,12 +60,14 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 		return err
 	}
 
-	// Account types: 1=commercial, 2=govcloud
-	awsEndpoint := ""
-	if accountInfo.AccountTypeID == 2 {
-		awsEndpoint = "amazonaws-us-gov.com"
-	} else {
-		awsEndpoint = "aws.amazon.com"
+	var awsDomain string
+	switch accountInfo.Type {
+	case client.AccountTypeCommercial:
+		awsDomain = "aws.amazon.com"
+	case client.AccountTypeGovCloud:
+		awsDomain = "amazonaws-us-gov.com"
+	default:
+		panic(fmt.Sprintf("unexpected account type: %d", accountInfo.Type))
 	}
 
 	creds, err := kion.GetTemporaryCredentialsByCloudAccessRole(accountID, cloudAccessRole)
@@ -72,7 +75,7 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 		return err
 	}
 
-	signinToken, err := getAWSSigninToken(awsEndpoint, creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+	signinToken, err := getAWSSigninToken(awsDomain, creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
 	if err != nil {
 		return err
 	}
@@ -80,9 +83,9 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	v := url.Values{}
 	v.Add("Action", "login")
 	v.Add("Issuer", fmt.Sprintf("https://%s/login", host))
-	v.Add("Destination", fmt.Sprintf("https://console.%s", awsEndpoint))
+	v.Add("Destination", fmt.Sprintf("https://console.%s", awsDomain))
 	v.Add("SigninToken", signinToken)
-	signinUrl := fmt.Sprintf("https://signin.%s/federation?", awsEndpoint) + v.Encode()
+	signinUrl := fmt.Sprintf("https://signin.%s/federation?", awsDomain) + v.Encode()
 
 	if cfg.Bool("print") {
 		fmt.Println(signinUrl)
