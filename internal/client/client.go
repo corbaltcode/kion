@@ -51,7 +51,6 @@ type TemporaryCredentials struct {
 type AccountType int
 
 const (
-	AccountTypeUnknown    AccountType = 0
 	AccountTypeCommercial AccountType = 1
 	AccountTypeGovCloud   AccountType = 2
 )
