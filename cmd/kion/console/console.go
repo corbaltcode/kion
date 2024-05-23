@@ -108,7 +108,7 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 
 	return nil
 }
-func getAWSSigninToken(awsEndpoint string, accessKeyID string, secretAccessKey string, sessionToken string) (string, error) {
+func getAWSSigninToken(awsDomain string, accessKeyID string, secretAccessKey string, sessionToken string) (string, error) {
 	session := map[string]string{
 		"sessionId":    accessKeyID,
 		"sessionKey":   secretAccessKey,
@@ -122,7 +122,7 @@ func getAWSSigninToken(awsEndpoint string, accessKeyID string, secretAccessKey s
 	v := url.Values{}
 	v.Add("Action", "getSigninToken")
 	v.Add("Session", string(sessionJSON))
-	url := fmt.Sprintf("https://signin.%s/federation?", awsEndpoint) + v.Encode()
+	url := fmt.Sprintf("https://signin.%s/federation?", awsDomain) + v.Encode()
 
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
