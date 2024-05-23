@@ -67,7 +67,7 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	case client.AccountTypeGovCloud:
 		awsDomain = "amazonaws-us-gov.com"
 	default:
-		panic(fmt.Sprintf("unexpected account type: %d", accountInfo.Type))
+		return errors.New(fmt.Sprintf("unexpected account type: %d", accountInfo.Type))
 	}
 
 	creds, err := kion.GetTemporaryCredentialsByCloudAccessRole(accountID, cloudAccessRole)
