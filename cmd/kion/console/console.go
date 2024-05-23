@@ -11,6 +11,7 @@ import (
 
 	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/util"
+	"github.com/corbaltcode/kion/internal/client"
 	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +30,6 @@ func New(cfg *config.Config, keyCfg *config.KeyConfig) *cobra.Command {
 	cmd.Flags().StringP("cloud-access-role", "", "", "cloud access role")
 	cmd.Flags().BoolP("print", "p", false, "print URL instead of opening a browser")
 	cmd.Flags().BoolP("logout", "", false, "log out of existing AWS console session")
-	cmd.Flags().StringP("region", "", "", "AWS region")
 	cmd.Flags().StringP("session-duration", "", "1h", "duration of temporary credentials")
 
 	return cmd
@@ -49,21 +49,33 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
-	region, err := cfg.StringErr("region")
-	if err != nil {
-		return err
-	}
 
 	kion, err := util.NewClient(cfg, keyCfg)
 	if err != nil {
 		return err
 	}
+
+	accountInfo, err := kion.GetAccountByID(accountID)
+	if err != nil {
+		return err
+	}
+
+	var awsDomain string
+	switch accountInfo.Type {
+	case client.AccountTypeCommercial:
+		awsDomain = "aws.amazon.com"
+	case client.AccountTypeGovCloud:
+		awsDomain = "amazonaws-us-gov.com"
+	default:
+		return errors.New(fmt.Sprintf("unexpected account type: %d", accountInfo.Type))
+	}
+
 	creds, err := kion.GetTemporaryCredentialsByCloudAccessRole(accountID, cloudAccessRole)
 	if err != nil {
 		return err
 	}
 
-	signinToken, err := getAWSSigninToken(creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
+	signinToken, err := getAWSSigninToken(awsDomain, creds.AccessKeyID, creds.SecretAccessKey, creds.SessionToken)
 	if err != nil {
 		return err
 	}
@@ -71,9 +83,9 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	v := url.Values{}
 	v.Add("Action", "login")
 	v.Add("Issuer", fmt.Sprintf("https://%s/login", host))
-	v.Add("Destination", fmt.Sprintf("https://%s.console.aws.amazon.com", region))
+	v.Add("Destination", fmt.Sprintf("https://console.%s", awsDomain))
 	v.Add("SigninToken", signinToken)
-	signinUrl := "https://signin.aws.amazon.com/federation?" + v.Encode()
+	signinUrl := fmt.Sprintf("https://signin.%s/federation?", awsDomain) + v.Encode()
 
 	if cfg.Bool("print") {
 		fmt.Println(signinUrl)
@@ -96,8 +108,7 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 
 	return nil
 }
-
-func getAWSSigninToken(accessKeyID string, secretAccessKey string, sessionToken string) (string, error) {
+func getAWSSigninToken(awsDomain string, accessKeyID string, secretAccessKey string, sessionToken string) (string, error) {
 	session := map[string]string{
 		"sessionId":    accessKeyID,
 		"sessionKey":   secretAccessKey,
@@ -111,7 +122,7 @@ func getAWSSigninToken(accessKeyID string, secretAccessKey string, sessionToken 
 	v := url.Values{}
 	v.Add("Action", "getSigninToken")
 	v.Add("Session", string(sessionJSON))
-	url := "https://signin.aws.amazon.com/federation?" + v.Encode()
+	url := fmt.Sprintf("https://signin.%s/federation?", awsDomain) + v.Encode()
 
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {

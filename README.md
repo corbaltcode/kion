@@ -26,7 +26,6 @@ Run `kion setup` to set up kion interactively. This subcommand asks for your Kio
 app-api-key-duration: 168h0m0s
 host: kion.example.com
 idms: 1
-region: us-east-1
 rotate-app-api-keys: true
 session-duration: 1h0m0s
 username: alice
