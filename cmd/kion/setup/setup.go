@@ -184,21 +184,10 @@ func run() error {
 		return err
 	}
 
-	var region string
-	err = survey.AskOne(
-		&survey.Input{Message: "Default region:", Default: "us-east-1"},
-		&region,
-		survey.WithValidator(survey.Required),
-	)
-	if err != nil {
-		return err
-	}
-
 	settings := map[string]interface{}{
 		"app-api-key-duration": appAPIKeyDuration,
 		"host":                 host,
 		"idms":                 idms.ID,
-		"region":               region,
 		"rotate-app-api-keys":  rotateAppAPIKeys,
 		"session-duration":     sessionDuration,
 		"username":             username,
