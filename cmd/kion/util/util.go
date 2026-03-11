@@ -21,46 +21,49 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 		return nil, err
 	}
 
-	// SAML takes precedence when configured, regardless of any leftover key.yml.
-	samlMetadata := cfg.String("saml-metadata")
-	if samlMetadata != "" {
-		return newSAMLClient(cfg, host, samlMetadata)
-	}
-
 	if keyCfg.Key != "" {
 		appAPIKeyDuration, err := cfg.DurationErr("app-api-key-duration")
 		if err != nil {
 			return nil, err
 		}
 
-		if cfg.Bool("rotate-app-api-keys") {
-			expiry := keyCfg.Created.Add(appAPIKeyDuration)
+		expiry := keyCfg.Created.Add(appAPIKeyDuration)
 
-			// rotate if expiring within three days
-			if expiry.Before(time.Now().Add(time.Hour * 72)) {
-				kion := client.NewWithAppAPIKey(host, keyCfg.Key, expiry)
-				key, err := kion.RotateAppAPIKey(keyCfg.Key)
-				if err != nil {
-					return nil, err
-				}
+		// Use the app API key if it has not yet expired.
+		if time.Now().Before(expiry) {
+			if cfg.Bool("rotate-app-api-keys") {
+				// rotate if expiring within three days
+				if expiry.Before(time.Now().Add(time.Hour * 72)) {
+					kion := client.NewWithAppAPIKey(host, keyCfg.Key, expiry)
+					key, err := kion.RotateAppAPIKey(keyCfg.Key)
+					if err != nil {
+						return nil, err
+					}
 
-				// can't know exact expiry before getting metadata, so pass zero Time meaning "no expiry"
-				kion = client.NewWithAppAPIKey(host, key.Key, time.Time{})
-				keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
-				if err != nil {
-					return nil, err
-				}
+					// can't know exact expiry before getting metadata, so pass zero Time meaning "no expiry"
+					kion = client.NewWithAppAPIKey(host, key.Key, time.Time{})
+					keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
+					if err != nil {
+						return nil, err
+					}
 
-				keyCfg.Key = key.Key
-				keyCfg.Created = keyMetadata.Created
-				err = keyCfg.Save()
-				if err != nil {
-					return nil, err
+					keyCfg.Key = key.Key
+					keyCfg.Created = keyMetadata.Created
+					err = keyCfg.Save()
+					if err != nil {
+						return nil, err
+					}
 				}
 			}
-		}
 
-		return client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Created.Add(appAPIKeyDuration)), nil
+			return client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Created.Add(appAPIKeyDuration)), nil
+		}
+		// Key is expired — fall through to re-authenticate.
+	}
+
+	samlMetadata := cfg.String("saml-metadata")
+	if samlMetadata != "" {
+		return newSAMLClient(cfg, host, samlMetadata)
 	}
 
 	idms, err := cfg.IntErr("idms")
