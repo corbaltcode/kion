@@ -12,6 +12,7 @@ import (
 	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/util"
 	"github.com/corbaltcode/kion/internal/client"
+	"github.com/corbaltcode/kion/internal/saml"
 	"github.com/spf13/cobra"
 	"github.com/zalando/go-keyring"
 	"gopkg.in/yaml.v3"
@@ -86,9 +87,17 @@ func run() error {
 	}
 	idms := idmss[idmsAnswer.Index]
 
+	if idms.TypeID == client.IDMSTypeSAML {
+		return runSAMLSetup(host, idms, userConfigName)
+	}
+	return runPasswordSetup(host, idms, userConfigName)
+}
+
+func runPasswordSetup(host string, idms client.IDMS, userConfigName string) error {
 	var username string
 	var password string
 	var kion *client.Client
+	var err error
 
 	for {
 		err = survey.AskOne(
@@ -193,19 +202,7 @@ func run() error {
 		"username":             username,
 	}
 
-	userConfigDir := filepath.Dir(userConfigName)
-	err = os.MkdirAll(userConfigDir, 0700)
-	if err != nil {
-		return err
-	}
-	f, err := os.OpenFile(userConfigName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	err = yaml.NewEncoder(f).Encode(settings)
-	if err != nil {
+	if err := writeConfig(userConfigName, settings); err != nil {
 		return err
 	}
 
@@ -214,6 +211,126 @@ func run() error {
 		Created: appAPIKeyMetadata.Created,
 	}
 	return keyCfg.Save()
+}
+
+func runSAMLSetup(host string, idms client.IDMS, userConfigName string) error {
+	var metadataSource string
+	err := survey.AskOne(
+		&survey.Input{Message: "SAML IDP metadata URL or file path:"},
+		&metadataSource,
+		survey.WithValidator(survey.Required),
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Fetching and validating SAML metadata...")
+	metadata, err := saml.Metadata(metadataSource)
+	if err != nil {
+		return fmt.Errorf("invalid SAML metadata: %w", err)
+	}
+	fmt.Println("Metadata looks good.")
+
+	var appAPIKeyAnswer survey.OptionAnswer
+	err = survey.AskOne(
+		&survey.Select{
+			Message: "Create App API Key?",
+			Options: []string{"Yes (recommended)", "No (re-authenticate via browser on each use)"},
+		},
+		&appAPIKeyAnswer,
+	)
+	if err != nil {
+		return err
+	}
+
+	appAPIKey := &client.AppAPIKey{}
+	appAPIKeyMetadata := &client.AppAPIKeyMetadata{}
+	var rotateAppAPIKeys bool
+	var appAPIKeyDuration time.Duration
+
+	if appAPIKeyAnswer.Index == 0 {
+		spIssuer := "https://" + host + "/api/v1/saml/auth"
+		fmt.Println("A browser window will open to authenticate and create the App API Key.")
+		token, err := saml.Authenticate(host, metadata, spIssuer, false)
+		if err != nil {
+			return fmt.Errorf("SAML authentication failed: %w", err)
+		}
+		kion := client.NewWithToken(host, token, time.Now().Add(10*time.Minute))
+
+		appAPIKey, err = kion.CreateAppAPIKey(util.AppAPIKeyName)
+		if err != nil {
+			return err
+		}
+		appAPIKeyMetadata, err = kion.GetAppAPIKeyMetadata(appAPIKey.ID)
+		if err != nil {
+			return err
+		}
+
+		err = survey.AskOne(
+			&survey.Confirm{
+				Message: "Automatically rotate App API Keys?",
+				Default: true,
+			},
+			&rotateAppAPIKeys,
+		)
+		if err != nil {
+			return err
+		}
+
+		err = survey.AskOne(
+			&survey.Input{Message: "Duration of App API Keys:", Default: "168h"},
+			&appAPIKeyDuration,
+			survey.WithValidator(survey.Required),
+			survey.WithValidator(validateDuration),
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	var sessionDuration time.Duration
+	err = survey.AskOne(
+		&survey.Input{Message: "Duration of temporary credentials:", Default: "60m"},
+		&sessionDuration,
+		survey.WithValidator(survey.Required),
+		survey.WithValidator(validateDuration),
+	)
+	if err != nil {
+		return err
+	}
+
+	settings := map[string]interface{}{
+		"host":             host,
+		"idms":             idms.ID,
+		"saml-metadata":    metadataSource,
+		"session-duration": sessionDuration,
+	}
+	if appAPIKeyAnswer.Index == 0 {
+		settings["app-api-key-duration"] = appAPIKeyDuration
+		settings["rotate-app-api-keys"] = rotateAppAPIKeys
+	}
+
+	if err := writeConfig(userConfigName, settings); err != nil {
+		return err
+	}
+
+	keyCfg := config.KeyConfig{
+		Key:     appAPIKey.Key,
+		Created: appAPIKeyMetadata.Created,
+	}
+	return keyCfg.Save()
+}
+
+func writeConfig(name string, settings map[string]interface{}) error {
+	if err := os.MkdirAll(filepath.Dir(name), 0700); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return yaml.NewEncoder(f).Encode(settings)
 }
 
 func fileExists(name string) (bool, error) {
