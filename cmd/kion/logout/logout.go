@@ -21,6 +21,11 @@ func New(cfg *config.Config) *cobra.Command {
 }
 
 func run(cfg *config.Config) error {
+	if cfg.String("saml-metadata") != "" {
+		tokenCfg := &config.SAMLTokenConfig{}
+		return tokenCfg.Save()
+	}
+
 	host, err := cfg.StringErr("host")
 	if err != nil {
 		return err
