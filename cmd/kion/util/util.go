@@ -28,12 +28,13 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 		}
 
 		expiry := keyCfg.Created.Add(appAPIKeyDuration)
+		now := time.Now().UTC()
 
 		// Use the app API key if it has not yet expired.
-		if time.Now().Before(expiry) {
+		if now.Before(expiry) {
 			if cfg.Bool("rotate-app-api-keys") {
 				// rotate if expiring within three days
-				if expiry.Before(time.Now().Add(time.Hour * 72)) {
+				if expiry.Before(now.Add(time.Hour * 72)) {
 					kion := client.NewWithAppAPIKey(host, keyCfg.Key, expiry)
 					key, err := kion.RotateAppAPIKey(keyCfg.Key)
 					if err != nil {
@@ -95,7 +96,9 @@ func newSAMLClient(cfg *config.Config, host string, metadataSource string) (*cli
 	if err != nil {
 		return nil, fmt.Errorf("loading cached SAML token: %w", err)
 	}
-	if tokenCfg.Token != "" && time.Now().Before(tokenCfg.Expires.Add(-samlTokenGracePeriod)) {
+
+	now := time.Now().UTC()
+	if tokenCfg.Token != "" && now.Before(tokenCfg.Expires.Add(-samlTokenGracePeriod)) {
 		return client.NewWithToken(host, tokenCfg.Token, tokenCfg.Expires), nil
 	}
 
@@ -113,7 +116,7 @@ func newSAMLClient(cfg *config.Config, host string, metadataSource string) (*cli
 	}
 
 	// Kion SAML tokens are valid for 10 minutes.
-	expires := time.Now().Add(10 * time.Minute)
+	expires := now.Add(10 * time.Minute)
 	tokenCfg = &config.SAMLTokenConfig{Token: token, Expires: expires}
 	if saveErr := tokenCfg.Save(); saveErr != nil {
 		// Non-fatal: we have a valid token for this invocation even if caching fails.

@@ -71,7 +71,7 @@ type accessToken struct {
 }
 
 func (t *accessToken) IsExpired() bool {
-	return !t.Expiry.IsZero() && time.Now().After(t.Expiry)
+	return !t.Expiry.IsZero() && time.Now().UTC().After(t.Expiry)
 }
 
 // NewWithAppAPIKey creates a Client that authenticates with an App API Key.
