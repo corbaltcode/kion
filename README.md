@@ -20,7 +20,7 @@ $ go install github.com/corbaltcode/kion/cmd/kion@latest
 
 ## Setup
 
-Run `kion setup` to set up kion interactively. This subcommand asks for your Kion host, login info, and other settings and writes `~/.config/kion/config.yml` similar to the following:
+Run `kion setup` to set up kion interactively. This subcommand asks for your Kion host, login info, and other settings and writes `~/.config/kion/config.yml` similar to one of the following:
 
 ```yaml
 app-api-key-duration: 168h0m0s
@@ -29,6 +29,16 @@ idms: 1
 rotate-app-api-keys: true
 session-duration: 1h0m0s
 username: alice
+```
+
+Or, for a SAML enabled IDMS:
+```yaml
+app-api-key-duration: 168h0m0s
+host: kion-saml.example.com
+idms: 1
+rotate-app-api-keys: true
+saml-metadata: https://id.example.com/sso/saml/metadata
+session-duration: 1h0m0s
 ```
 
 ## Fetching Credentials
@@ -152,13 +162,13 @@ If `rotate-app-api-keys` is set to `true` in `~/.config/kion/config.yml`, the Ki
 The `key` subcommand also handles the situation where your key expires — for example, you don't run the Kion tool for a while. The `--force` flag permits the tool to overwrite an existing, possibly expired key:
 
 ```
-### May prompt for user credentials
+### May prompt for user credentials or launch a browser for SAML authentication
 $ kion key create --force
 ```
 
 ## User Credentials
 
-If you choose not to use an App API Key, `kion setup` stores user credentials in the system keyring (Secret Service on Linux, Keychain on macOS, Credential Manager on Windows).
+If you choose not to use an App API Key, `kion setup` can store user credentials in the system keyring (Secret Service on Linux, Keychain on macOS, Credential Manager on Windows).
 
 To update the user credentials in the system keyring (e.g. your password changes), use the interactive `login` subcommand:
 

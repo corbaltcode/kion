@@ -26,6 +26,10 @@ func New(cfg *config.Config) *cobra.Command {
 }
 
 func run(cfg *config.Config) error {
+	if cfg.String("saml-metadata") != "" {
+		return errors.New("login is not required for SAML authentication; credentials are managed via browser")
+	}
+
 	host, err := cfg.StringErr("host")
 	if err != nil {
 		return err

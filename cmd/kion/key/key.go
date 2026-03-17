@@ -2,15 +2,12 @@ package key
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/corbaltcode/kion/cmd/kion/config"
 	"github.com/corbaltcode/kion/cmd/kion/util"
 	"github.com/corbaltcode/kion/internal/client"
 	"github.com/spf13/cobra"
-	"github.com/zalando/go-keyring"
 )
 
 func New(cfg *config.Config, keyCfg *config.KeyConfig) *cobra.Command {
@@ -50,34 +47,7 @@ func runCreate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 		return errors.New("key exists; use --force to overwrite")
 	}
 
-	host, err := cfg.StringErr("host")
-	if err != nil {
-		return err
-	}
-	idms, err := cfg.IntErr("idms")
-	if err != nil {
-		return err
-	}
-	username, err := cfg.StringErr("username")
-	if err != nil {
-		return err
-	}
-
-	password, err := keyring.Get(util.KeyringService(host, idms), username)
-	if errors.Is(err, keyring.ErrNotFound) {
-		err = survey.AskOne(
-			&survey.Password{Message: fmt.Sprintf("Password for '%v' on '%v' (IDMS %v):", username, host, idms)},
-			&password,
-			survey.WithValidator(survey.Required),
-		)
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
-
-	kion, err := client.Login(host, idms, username, password)
+	kion, err := util.NewClient(cfg, keyCfg)
 	if err != nil {
 		return err
 	}

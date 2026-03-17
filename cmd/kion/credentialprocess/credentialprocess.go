@@ -46,10 +46,7 @@ func run(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
-	username, err := cfg.StringErr("username")
-	if err != nil {
-		return err
-	}
+	username := cfg.String("username")
 	accountID, err := cfg.StringErr("account-id")
 	if err != nil {
 		return err

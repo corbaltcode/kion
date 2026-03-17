@@ -63,6 +63,55 @@ type KeyConfig struct {
 	Created time.Time
 }
 
+const samlTokenConfigFilename = "saml-token.yml"
+
+type SAMLTokenConfig struct {
+	Token   string
+	Expires time.Time
+}
+
+func LoadSAMLTokenConfig() (*SAMLTokenConfig, error) {
+	dir, err := UserConfigDir()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := SAMLTokenConfig{}
+	name := filepath.Join(dir, samlTokenConfigFilename)
+	f, err := os.Open(name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return &cfg, nil
+	} else if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	if err := yaml.NewDecoder(f).Decode(&cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func (c *SAMLTokenConfig) Save() error {
+	dir, err := UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	name := filepath.Join(dir, samlTokenConfigFilename)
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return err
+	}
+
+	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	return yaml.NewEncoder(f).Encode(c)
+}
+
 func LoadKeyConfig() (*KeyConfig, error) {
 	dir, err := UserConfigDir()
 	if err != nil {

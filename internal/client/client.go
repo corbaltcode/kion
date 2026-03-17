@@ -37,9 +37,12 @@ type AppAPIKeyMetadata struct {
 	Created time.Time
 }
 
+const IDMSTypeSAML = 3
+
 type IDMS struct {
-	ID   int
-	Name string
+	ID     int    `json:"id"`
+	TypeID int    `json:"idms_type_id"`
+	Name   string `json:"name"`
 }
 
 type TemporaryCredentials struct {
@@ -68,7 +71,7 @@ type accessToken struct {
 }
 
 func (t *accessToken) IsExpired() bool {
-	return !t.Expiry.IsZero() && time.Now().After(t.Expiry)
+	return !t.Expiry.IsZero() && time.Now().UTC().After(t.Expiry)
 }
 
 // NewWithAppAPIKey creates a Client that authenticates with an App API Key.
@@ -81,6 +84,20 @@ func NewWithAppAPIKey(host string, key string, expiry time.Time) *Client {
 			Token:       key,
 			Expiry:      expiry,
 			IsAppAPIKey: true,
+		},
+	}
+}
+
+// NewWithToken creates a Client that authenticates with a pre-obtained bearer token
+// (e.g. from a SAML authentication flow). expiry is used to detect when the token
+// has expired; a zero expiry means no expiry check is performed.
+func NewWithToken(host string, token string, expiry time.Time) *Client {
+	return &Client{
+		Host: host,
+		accessToken: &accessToken{
+			Token:       token,
+			Expiry:      expiry,
+			IsAppAPIKey: false,
 		},
 	}
 }
