@@ -57,6 +57,17 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 	if err != nil {
 		return nil, err
 	}
+	if cfg.String("auth-method") == "saml" {
+		metadataFile, err := cfg.StringErr("saml-metadata-file")
+		if err != nil {
+			return nil, err
+		}
+		issuer, err := cfg.StringErr("saml-sp-issuer")
+		if err != nil {
+			return nil, err
+		}
+		return client.Login("saml", host, idms, "", "", metadataFile, issuer, cfg.Bool("saml-print-url"), false)
+	}
 	username, err := cfg.StringErr("username")
 	if err != nil {
 		return nil, err
@@ -67,7 +78,7 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 		return nil, err
 	}
 
-	return client.Login(host, idms, username, password)
+	return client.Login("password", host, idms, username, password, "", "", false, false)
 }
 
 func KeyringService(host string, idms int) string {

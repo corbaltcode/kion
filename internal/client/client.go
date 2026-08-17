@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
+	"github.com/corbaltcode/kion/internal/saml"
 	"github.com/relvacode/iso8601"
 )
 
@@ -85,8 +87,31 @@ func NewWithAppAPIKey(host string, key string, expiry time.Time) *Client {
 	}
 }
 
+func newWithBearerToken(host string, token string, expiry time.Time) *Client {
+	return &Client{
+		Host: host,
+		accessToken: &accessToken{
+			Token:       token,
+			Expiry:      expiry,
+			IsAppAPIKey: false,
+		},
+	}
+}
+
+// Login authenticates with the configured authentication method.
+func Login(authMethod, host string, idms int, username, password, metadataFile, issuer string, printURL, force bool) (*Client, error) {
+	switch authMethod {
+	case "password":
+		return loginWithPassword(host, idms, username, password)
+	case "saml":
+		return loginWithSAML(host, idms, metadataFile, issuer, printURL, force)
+	default:
+		return nil, fmt.Errorf("invalid auth method: %v", authMethod)
+	}
+}
+
 // TODO: how to use the refresh token (currently dropped)?
-func Login(host string, idms int, username string, password string) (*Client, error) {
+func loginWithPassword(host string, idms int, username, password string) (*Client, error) {
 	req := map[string]interface{}{
 		"idms":     idms,
 		"username": username,
@@ -103,15 +128,33 @@ func Login(host string, idms int, username string, password string) (*Client, er
 		return nil, err
 	}
 
-	client := Client{
-		Host: host,
-		accessToken: &accessToken{
-			Token:       resp.Access.Token,
-			Expiry:      time.Time{},
-			IsAppAPIKey: false,
-		},
+	return newWithBearerToken(host, resp.Access.Token, time.Time{}), nil
+}
+
+func loginWithSAML(host string, idms int, metadataFile, issuer string, printURL, force bool) (*Client, error) {
+	token, expiry, err := saml.Authenticate(saml.Config{
+		Host:                  host,
+		IDMS:                  idms,
+		MetadataFile:          metadataFile,
+		ServiceProviderIssuer: issuer,
+		PrintURL:              printURL,
+	}, force)
+	if err != nil {
+		return nil, err
 	}
-	return &client, nil
+	return newWithBearerToken(apiHost(host), token, expiry), nil
+}
+
+func apiHost(host string) string {
+	host = strings.TrimRight(strings.TrimSpace(host), "/")
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
+		return host
+	}
+	parsed, err := url.Parse(host)
+	if err == nil && parsed.Host != "" {
+		return parsed.Host
+	}
+	return host
 }
 
 func GetIDMSs(host string) ([]IDMS, error) {

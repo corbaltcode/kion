@@ -58,28 +58,45 @@ func runCreate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
-	username, err := cfg.StringErr("username")
-	if err != nil {
-		return err
-	}
 
-	password, err := keyring.Get(util.KeyringService(host, idms), username)
-	if errors.Is(err, keyring.ErrNotFound) {
-		err = survey.AskOne(
-			&survey.Password{Message: fmt.Sprintf("Password for '%v' on '%v' (IDMS %v):", username, host, idms)},
-			&password,
-			survey.WithValidator(survey.Required),
-		)
+	var kion *client.Client
+	if cfg.String("auth-method") == "saml" {
+		metadataFile, err := cfg.StringErr("saml-metadata-file")
 		if err != nil {
 			return err
 		}
-	} else if err != nil {
-		return err
-	}
+		issuer, err := cfg.StringErr("saml-sp-issuer")
+		if err != nil {
+			return err
+		}
+		kion, err = client.Login("saml", host, idms, "", "", metadataFile, issuer, cfg.Bool("saml-print-url"), false)
+		if err != nil {
+			return err
+		}
+	} else {
+		username, err := cfg.StringErr("username")
+		if err != nil {
+			return err
+		}
 
-	kion, err := client.Login(host, idms, username, password)
-	if err != nil {
-		return err
+		password, err := keyring.Get(util.KeyringService(host, idms), username)
+		if errors.Is(err, keyring.ErrNotFound) {
+			err = survey.AskOne(
+				&survey.Password{Message: fmt.Sprintf("Password for '%v' on '%v' (IDMS %v):", username, host, idms)},
+				&password,
+				survey.WithValidator(survey.Required),
+			)
+			if err != nil {
+				return err
+			}
+		} else if err != nil {
+			return err
+		}
+
+		kion, err = client.Login("password", host, idms, username, password, "", "", false, false)
+		if err != nil {
+			return err
+		}
 	}
 
 	key, err := kion.CreateAppAPIKey(util.AppAPIKeyName)
