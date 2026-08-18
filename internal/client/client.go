@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/corbaltcode/kion/internal/saml"
@@ -142,19 +141,7 @@ func loginWithSAML(host string, idms int, metadataFile, issuer string, printURL,
 	if err != nil {
 		return nil, err
 	}
-	return newWithBearerToken(apiHost(host), token, expiry), nil
-}
-
-func apiHost(host string) string {
-	host = strings.TrimRight(strings.TrimSpace(host), "/")
-	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
-		return host
-	}
-	parsed, err := url.Parse(host)
-	if err == nil && parsed.Host != "" {
-		return parsed.Host
-	}
-	return host
+	return newWithBearerToken(host, token, expiry), nil
 }
 
 func GetIDMSs(host string) ([]IDMS, error) {

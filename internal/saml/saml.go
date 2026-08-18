@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
-	upstreamkion "github.com/kionsoftware/kion-cli/lib/kion"
-	samltypes "github.com/russellhaering/gosaml2/types"
+	kioncli "github.com/kionsoftware/kion-cli/lib/kion"
 	"github.com/zalando/go-keyring"
 )
 
@@ -49,7 +49,7 @@ func Authenticate(cfg Config, force bool) (string, time.Time, error) {
 	}
 
 	if session.RefreshToken != "" && session.RefreshExpiry.After(time.Now()) {
-		refreshed, refreshErr := upstreamkion.RefreshSession(appURL(cfg.Host), session.RefreshToken)
+		refreshed, refreshErr := kioncli.RefreshSession(appURL(cfg.Host), session.RefreshToken)
 		if refreshErr == nil && refreshed.Access.Token != "" {
 			session.AccessToken = refreshed.Access.Token
 			session.AccessExpiry = parseAccessExpiry(refreshed.Access.Expiry)
@@ -64,11 +64,15 @@ func Authenticate(cfg Config, force bool) (string, time.Time, error) {
 }
 
 func authenticate(cfg Config) (string, time.Time, error) {
+	loadMetadata := kioncli.ReadSAMLMetadataFile
+	if strings.HasPrefix(cfg.MetadataFile, "http://") || strings.HasPrefix(cfg.MetadataFile, "https://") {
+		loadMetadata = kioncli.DownloadSAMLMetadata
+	}
 	metadata, err := loadMetadata(cfg.MetadataFile)
 	if err != nil {
 		return "", time.Time{}, err
 	}
-	authData, err := upstreamkion.AuthenticateSAML(
+	authData, err := kioncli.AuthenticateSAML(
 		appURL(cfg.Host),
 		metadata,
 		cfg.ServiceProviderIssuer,
@@ -88,13 +92,6 @@ func authenticate(cfg Config) (string, time.Time, error) {
 		return "", time.Time{}, err
 	}
 	return session.AccessToken, session.AccessExpiry, nil
-}
-
-func loadMetadata(name string) (*samltypes.EntityDescriptor, error) {
-	if strings.HasPrefix(name, "http://") || strings.HasPrefix(name, "https://") {
-		return upstreamkion.DownloadSAMLMetadata(name)
-	}
-	return upstreamkion.ReadSAMLMetadataFile(name)
 }
 
 func loadSession(cfg Config) (storedSession, error) {
@@ -126,11 +123,11 @@ func keyringService(cfg Config) string {
 }
 
 func appURL(host string) string {
-	host = strings.TrimRight(strings.TrimSpace(host), "/")
-	if strings.HasPrefix(host, "http://") || strings.HasPrefix(host, "https://") {
-		return host
+	u := url.URL{
+		Scheme: "https",
+		Host:   host,
 	}
-	return "https://" + host
+	return u.String()
 }
 
 func parseAccessExpiry(value string) time.Time {
