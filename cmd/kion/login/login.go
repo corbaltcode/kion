@@ -34,6 +34,18 @@ func run(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+	if cfg.String("auth-method") == "saml" {
+		metadataFile, err := cfg.StringErr("saml-metadata-file")
+		if err != nil {
+			return err
+		}
+		issuer, err := cfg.StringErr("saml-sp-issuer")
+		if err != nil {
+			return err
+		}
+		_, err = client.Login("saml", host, idms, "", "", metadataFile, issuer, cfg.Bool("saml-print-url"), true)
+		return err
+	}
 	username, err := cfg.StringErr("username")
 	if err != nil {
 		return err
@@ -51,7 +63,7 @@ func run(cfg *config.Config) error {
 			return err
 		}
 
-		_, err := client.Login(host, idms, username, password)
+		_, err := client.Login("password", host, idms, username, password, "", "", false, false)
 
 		if errors.Is(err, client.ErrInvalidCredentials) {
 			fmt.Println("Invalid credentials")

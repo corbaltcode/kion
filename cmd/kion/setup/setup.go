@@ -63,59 +63,124 @@ func run() error {
 		return err
 	}
 
-	idmss, err := client.GetIDMSs(host)
-	if err != nil {
+	var authMethodAnswer survey.OptionAnswer
+	if err = survey.AskOne(
+		&survey.Select{
+			Message: "Authentication method:",
+			Options: []string{"SAML (browser)", "Username/password"},
+		},
+		&authMethodAnswer,
+	); err != nil {
 		return err
 	}
-	if len(idmss) < 1 {
-		return fmt.Errorf("empty IDMS list")
-	}
 
-	idmsNames := []string{}
-	for _, idms := range idmss {
-		idmsNames = append(idmsNames, idms.Name)
-	}
-
-	var idmsAnswer survey.OptionAnswer
-	err = survey.AskOne(
-		&survey.Select{Message: "ID Management System:", Options: idmsNames},
-		&idmsAnswer,
-	)
-	if err != nil {
-		return err
-	}
-	idms := idmss[idmsAnswer.Index]
-
+	var idmsID int
 	var username string
 	var password string
 	var kion *client.Client
+	var samlMetadataFile string
+	var samlServiceProviderIssuer string
+	var samlPrintURL bool
+	authMethod := "password"
 
-	for {
-		err = survey.AskOne(
-			&survey.Input{Message: "Username:"},
-			&username,
+	if authMethodAnswer.Index == 0 {
+		authMethod = "saml"
+
+		if err = survey.AskOne(
+			&survey.Input{Message: "IDMS ID:"},
+			&idmsID,
 			survey.WithValidator(survey.Required),
+		); err != nil {
+			return err
+		}
+		if idmsID < 1 {
+			return errors.New("IDMS ID must be greater than zero")
+		}
+
+		if err = survey.AskOne(
+			&survey.Input{
+				Message: "SAML metadata URL or file:",
+			},
+			&samlMetadataFile,
+			survey.WithValidator(survey.Required),
+		); err != nil {
+			return err
+		}
+
+		if err = survey.AskOne(
+			&survey.Input{
+				Message: "SAML service provider issuer:",
+			},
+			&samlServiceProviderIssuer,
+			survey.WithValidator(survey.Required),
+		); err != nil {
+			return err
+		}
+
+		if err = survey.AskOne(
+			&survey.Confirm{
+				Message: "Print the SAML URL instead of opening a browser?",
+				Default: false,
+			},
+			&samlPrintURL,
+		); err != nil {
+			return err
+		}
+
+		if kion, err = client.Login(authMethod, host, idmsID, "", "", samlMetadataFile, samlServiceProviderIssuer, samlPrintURL, true); err != nil {
+			return err
+		}
+	} else {
+		idmss, err := client.GetIDMSs(host)
+		if err != nil {
+			return err
+		}
+		if len(idmss) < 1 {
+			return fmt.Errorf("empty IDMS list")
+		}
+
+		idmsNames := []string{}
+		for _, idms := range idmss {
+			idmsNames = append(idmsNames, idms.Name)
+		}
+
+		var idmsAnswer survey.OptionAnswer
+		err = survey.AskOne(
+			&survey.Select{Message: "ID Management System:", Options: idmsNames},
+			&idmsAnswer,
 		)
 		if err != nil {
 			return err
 		}
+		idmsID = idmss[idmsAnswer.Index].ID
 
-		err = survey.AskOne(
-			&survey.Password{Message: "Password:"},
-			&password,
-			survey.WithValidator(survey.Required),
-		)
-		if err != nil {
-			return err
-		}
+		for {
+			err = survey.AskOne(
+				&survey.Input{Message: "Username:"},
+				&username,
+				survey.WithValidator(survey.Required),
+			)
+			if err != nil {
+				return err
+			}
 
-		kion, err = client.Login(host, idms.ID, username, password)
-		if errors.Is(err, client.ErrInvalidCredentials) {
-			fmt.Println("Invalid credentials")
-		} else if err != nil {
-			return err
-		} else {
-			break
+			err = survey.AskOne(
+				&survey.Password{Message: "Password:"},
+				&password,
+				survey.WithValidator(survey.Required),
+			)
+			if err != nil {
+				return err
+			}
+
+			kion, err = client.Login(authMethod, host, idmsID, username, password, "", "", false, false)
+			if errors.Is(err, client.ErrInvalidCredentials) {
+				fmt.Println("Invalid credentials")
+			} else if err != nil {
+				return err
+			} else {
+				break
+			}
 		}
 	}
 
@@ -143,8 +208,8 @@ func run() error {
 		if err != nil {
 			return err
 		}
-	} else {
-		err = keyring.Set(util.KeyringService(host, idms.ID), username, password)
+	} else if authMethodAnswer.Index != 0 {
+		err = keyring.Set(util.KeyringService(host, idmsID), username, password)
 		if err != nil {
 			return err
 		}
@@ -186,11 +251,18 @@ func run() error {
 
 	settings := map[string]interface{}{
 		"app-api-key-duration": appAPIKeyDuration,
+		"auth-method":          authMethod,
 		"host":                 host,
-		"idms":                 idms.ID,
+		"idms":                 idmsID,
 		"rotate-app-api-keys":  rotateAppAPIKeys,
 		"session-duration":     sessionDuration,
-		"username":             username,
+	}
+	if authMethod == "saml" {
+		settings["saml-metadata-file"] = samlMetadataFile
+		settings["saml-sp-issuer"] = samlServiceProviderIssuer
+		settings["saml-print-url"] = samlPrintURL
+	} else {
+		settings["username"] = username
 	}
 
 	userConfigDir := filepath.Dir(userConfigName)

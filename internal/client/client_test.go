@@ -9,31 +9,56 @@ import (
 
 var host string
 var idms int
+var authMethod string
 var username string
 var password string
+var samlMetadataFile string
+var samlSPIssuer string
 
 func TestMain(m *testing.M) {
 	host = mustGetenv("KION_HOST")
 	idms = mustGetenvInt("KION_IDMS")
-	username = mustGetenv("KION_USERNAME")
-	password = mustGetenv("KION_PASSWORD")
+	authMethod = mustGetenv("KION_AUTHMETHOD")
+
+	switch authMethod {
+	case "password":
+		username = mustGetenv("KION_USERNAME")
+		password = mustGetenv("KION_PASSWORD")
+	case "saml":
+		samlMetadataFile = mustGetenv("KION_SAML_METADATA_FILE")
+		samlSPIssuer = mustGetenv("KION_SAML_SP_ISSUER")
+	default:
+		panic(fmt.Sprintf("invalid KION_AUTHMETHOD: %v", authMethod))
+	}
 
 	m.Run()
 }
 
 func TestLogin(t *testing.T) {
+	if authMethod == "saml" {
+		_, err := Login(authMethod, host, idms, "", "", samlMetadataFile, samlSPIssuer, false, true)
+		if err != nil {
+			t.Fatalf("SAML login failed: %v", err)
+		}
+		return
+	}
+
 	login(t)
 }
 
 func TestInvalidCredentials(t *testing.T) {
-	_, err := Login(host, idms, "bad-user", "bad-pass")
+	if authMethod == "saml" {
+		t.Skip("invalid username/password credentials do not apply to SAML authentication")
+	}
+
+	_, err := Login(authMethod, host, idms, "bad-user", "bad-pass", "", "", false, false)
 	if err != ErrInvalidCredentials {
 		t.Fatalf("got error %v (want ErrInvalidCredentials)", err)
 	}
 }
 
 func login(t *testing.T) *Client {
-	c, err := Login(host, idms, username, password)
+	c, err := Login(authMethod, host, idms, username, password, "", "", false, false)
 	if err != nil {
 		t.Fatalf("login failed: %v", err)
 	}

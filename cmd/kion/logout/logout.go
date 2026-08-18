@@ -29,6 +29,10 @@ func run(cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+	if cfg.String("auth-method") == "saml" {
+		err = keyring.Delete(util.KeyringService(host, idms)+"/saml", "session")
+		return err
+	}
 	username, err := cfg.StringErr("username")
 	if err != nil {
 		return err
