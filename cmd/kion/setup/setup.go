@@ -85,7 +85,6 @@ func run() error {
 
 	if authMethodAnswer.Index == 0 {
 		authMethod = "saml"
-		username = "saml"
 
 		if err = survey.AskOne(
 			&survey.Input{Message: "IDMS ID:"},
@@ -257,12 +256,13 @@ func run() error {
 		"idms":                 idmsID,
 		"rotate-app-api-keys":  rotateAppAPIKeys,
 		"session-duration":     sessionDuration,
-		"username":             username,
 	}
 	if authMethod == "saml" {
 		settings["saml-metadata-file"] = samlMetadataFile
 		settings["saml-sp-issuer"] = samlServiceProviderIssuer
 		settings["saml-print-url"] = samlPrintURL
+	} else {
+		settings["username"] = username
 	}
 
 	userConfigDir := filepath.Dir(userConfigName)

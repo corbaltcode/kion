@@ -32,7 +32,6 @@ saml-metadata-file: https://idp.example.com/saml/metadata
 saml-print-url: false
 saml-sp-issuer: https://kion.example.com/api/v1/saml/auth
 session-duration: 1h0m0s
-username: saml
 ```
 
 The `host` setting is the Kion hostname without a URL scheme, such as `kion.example.com`; do not include `https://`.
