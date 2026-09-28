@@ -103,14 +103,7 @@ func runCreate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 	if err != nil {
 		return err
 	}
-	keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
-	if err != nil {
-		return err
-	}
-
-	keyCfg.Key = key.Key
-	keyCfg.Created = keyMetadata.Created
-	return keyCfg.Save()
+	return util.SaveAppAPIKey(kion, key, keyCfg)
 }
 
 func runRotate(cfg *config.Config, keyCfg *config.KeyConfig) error {
@@ -131,12 +124,5 @@ func runRotate(cfg *config.Config, keyCfg *config.KeyConfig) error {
 
 	// can't know exact expiry before getting metadata, so pass zero Time meaning "no expiry"
 	kion = client.NewWithAppAPIKey(host, key.Key, time.Time{})
-	keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
-	if err != nil {
-		return err
-	}
-
-	keyCfg.Key = key.Key
-	keyCfg.Created = keyMetadata.Created
-	return keyCfg.Save()
+	return util.SaveAppAPIKey(kion, key, keyCfg)
 }
