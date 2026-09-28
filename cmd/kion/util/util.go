@@ -17,17 +17,18 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 		return nil, err
 	}
 
+	var appAPIKeyDuration time.Duration
 	if keyCfg.Key != "" {
-		appAPIKeyDuration, err := cfg.DurationErr("app-api-key-duration")
+		appAPIKeyDuration, err = cfg.DurationErr("app-api-key-duration")
 		if err != nil {
 			return nil, err
 		}
+		expiry := keyCfg.Created.Add(appAPIKeyDuration)
+		now := time.Now()
 
-		if cfg.Bool("rotate-app-api-keys") {
-			expiry := keyCfg.Created.Add(appAPIKeyDuration)
-
+		if now.Before(expiry) {
 			// rotate if expiring within three days
-			if expiry.Before(time.Now().Add(time.Hour * 72)) {
+			if cfg.Bool("rotate-app-api-keys") && expiry.Before(now.Add(time.Hour*72)) {
 				kion := client.NewWithAppAPIKey(host, keyCfg.Key, expiry)
 				key, err := kion.RotateAppAPIKey(keyCfg.Key)
 				if err != nil {
@@ -36,21 +37,17 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 
 				// can't know exact expiry before getting metadata, so pass zero Time meaning "no expiry"
 				kion = client.NewWithAppAPIKey(host, key.Key, time.Time{})
-				keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
-				if err != nil {
-					return nil, err
-				}
-
-				keyCfg.Key = key.Key
-				keyCfg.Created = keyMetadata.Created
-				err = keyCfg.Save()
-				if err != nil {
+				if err := SaveAppAPIKey(kion, key, keyCfg); err != nil {
 					return nil, err
 				}
 			}
+
+			return client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Created.Add(appAPIKeyDuration)), nil
 		}
 
-		return client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Created.Add(appAPIKeyDuration)), nil
+		if !cfg.Bool("rotate-app-api-keys") || cfg.String("auth-method") != "saml" {
+			return client.NewWithAppAPIKey(host, keyCfg.Key, expiry), nil
+		}
 	}
 
 	idms, err := cfg.IntErr("idms")
@@ -66,7 +63,23 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 		if err != nil {
 			return nil, err
 		}
-		return client.Login("saml", host, idms, "", "", metadataFile, issuer, cfg.Bool("saml-print-url"), false)
+		kion, err := client.Login("saml", host, idms, "", "", metadataFile, issuer, cfg.Bool("saml-print-url"), false)
+		if err != nil {
+			return nil, err
+		}
+		if keyCfg.Key == "" {
+			return kion, nil
+		}
+
+		// An existing key reaching this point has expired; replace it using the SAML session.
+		key, err := kion.CreateAppAPIKey(AppAPIKeyName)
+		if err != nil {
+			return nil, err
+		}
+		if err := SaveAppAPIKey(kion, key, keyCfg); err != nil {
+			return nil, err
+		}
+		return client.NewWithAppAPIKey(host, keyCfg.Key, keyCfg.Created.Add(appAPIKeyDuration)), nil
 	}
 	username, err := cfg.StringErr("username")
 	if err != nil {
@@ -79,6 +92,17 @@ func NewClient(cfg *config.Config, keyCfg *config.KeyConfig) (*client.Client, er
 	}
 
 	return client.Login("password", host, idms, username, password, "", "", false, false)
+}
+
+// SaveAppAPIKey fetches a key's creation timestamp and persists it with the key.
+func SaveAppAPIKey(kion *client.Client, key *client.AppAPIKey, keyCfg *config.KeyConfig) error {
+	keyMetadata, err := kion.GetAppAPIKeyMetadata(key.ID)
+	if err != nil {
+		return err
+	}
+	keyCfg.Key = key.Key
+	keyCfg.Created = keyMetadata.Created
+	return keyCfg.Save()
 }
 
 func KeyringService(host string, idms int) string {
